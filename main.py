@@ -32,6 +32,7 @@ class LevelEditor(Subprogram):
         super().__init__(master)
         self.blocksize = blocksize
         self.size = size
+        self.n_blocks = self.size//self.blocksize
         self.canvas = tk.Canvas(master=self.frame, width=size, height=size)
         self.toolbar = tk.Frame(master=self.frame)
         self.load_btn = tk.Button(master=self.toolbar, text='Load Map')
@@ -39,7 +40,7 @@ class LevelEditor(Subprogram):
         self.placing_frame = tk.Frame(master=self.frame)
         combo_label = tk.Label(master=self.placing_frame, text='Placing: ')
         self.placing = tk.StringVar()
-        self.placing_combo = ttk.Combobox(master=self.placing_frame, values=constatnts.NAMES, textvariable=self.placing, state='readonly')
+        self.placing_combo = ttk.Combobox(master=self.placing_frame, values=constatnts.BLOCK_NAMES, textvariable=self.placing, state='readonly')
         self.placing_combo.current(0)
         self.placing_combo.bind('<<ComboboxSelected>>', lambda x: print(x, self.placing.get()))
 
@@ -50,6 +51,19 @@ class LevelEditor(Subprogram):
         self.placing_frame.grid(row=2, column=0)
         combo_label.pack(side=tk.LEFT)
         self.placing_combo.pack(side=tk.LEFT)
+
+        self.draw_grid()
+
+    def draw_grid(self):
+        for y in range(0, self.size, self.blocksize):
+            self.canvas.create_line(0,y,self.size,y)
+        
+        for x in range(0, self.size, self.blocksize):
+            self.canvas.create_line(x,0,x,self.size)
+
+
+    def save(self):
+        pass
 
 
 
@@ -85,7 +99,7 @@ class Program:
         self.level_selector_play_btn.grid(row=3, column=1, sticky='nswe')
 
 
-        self.level_editor = LevelEditor(self.window, 800, 20)
+        self.level_editor = LevelEditor(self.window, 800, 40)
 
 
         self.menu_frame.pack()
