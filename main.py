@@ -44,10 +44,15 @@ def tint_image(image, color):
         b = Image.eval(b, lambda x: x*factor)
         return Image.merge('RGBA', (r,g,b,a))
 
-class Barrel:
+
+class BlockObject:
+    def __init__(self, blocksize, sprite_filepath):
+        self._image = resize_to_fit(Image.open(sprite_filepath), blocksize, blocksize)
+        self.sprite = ImageTk.PhotoImage(self._image)  
+
+class Barrel(BlockObject):
     def __init__(self, blocksize):
-        self._image = resize_to_fit(Image.open('assets/barrel.png'), blocksize, blocksize)
-        self.sprite = ImageTk.PhotoImage(self._image)
+        super().__init__(blocksize, 'assets/barrel.png')
 
 
 class Player:
@@ -107,6 +112,7 @@ class LevelEditor(Subprogram):
         self.canvas.bind_all('1', lambda e: self.placing_combo.current(0))
         self.canvas.bind_all('2', lambda e: self.placing_combo.current(1))
         self.canvas.bind_all('3', lambda e: self.placing_combo.current(2))
+        self.canvas.bind_all('4', lambda e: self.placing_combo.current(3))
         self.toolbar = tk.Frame(master=self.frame)
         self.load_btn = tk.Button(master=self.toolbar, text='Load Map', command=self.load)
         self.save_btn = tk.Button(master=self.toolbar, text='Save Map', command=self.save)
@@ -128,6 +134,7 @@ class LevelEditor(Subprogram):
         self.draw_grid()
 
         self.barrel = Barrel(blocksize)
+        self.player = BlockObject(blocksize, 'assets/player_down_1.png')
 
     def draw_grid(self):
         for y in range(0, self.size, self.blocksize):
@@ -161,6 +168,9 @@ class LevelEditor(Subprogram):
             self.board_references[y][x] = self.canvas.create_rectangle(x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize, fill='black')
         elif self.board[y][x] == constants.BARREL:
             ID = self.canvas.create_image(x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, image=self.barrel.sprite)
+            self.board_references[y][x] = ID
+        elif self.board[y][x] == constants.SPAWNPOINT:
+            ID = self.canvas.create_image(x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, image=self.player.sprite)
             self.board_references[y][x] = ID
 
 
