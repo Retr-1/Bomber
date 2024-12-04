@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import constatnts
 from PIL import Image, ImageTk
+from tkinter.filedialog import asksaveasfile, askopenfile
 
 def resize(image, width, height):
     if width is None and height is None:
@@ -64,9 +65,13 @@ class LevelEditor(Subprogram):
         self.board_references = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.canvas = tk.Canvas(master=self.frame, width=size, height=size)
         self.canvas.bind('<B1-Motion>', self.mouse_motion)
+        self.canvas.bind('<Button-1>', lambda e: self.place_current(e.x, e.y))
+        self.canvas.bind_all('1', lambda e: self.placing_combo.current(0))
+        self.canvas.bind_all('2', lambda e: self.placing_combo.current(1))
+        self.canvas.bind_all('3', lambda e: self.placing_combo.current(2))
         self.toolbar = tk.Frame(master=self.frame)
-        self.load_btn = tk.Button(master=self.toolbar, text='Load Map')
-        self.save_btn = tk.Button(master=self.toolbar, text='Save Map')
+        self.load_btn = tk.Button(master=self.toolbar, text='Load Map', command=self.load)
+        self.save_btn = tk.Button(master=self.toolbar, text='Save Map', command=self.save)
         self.placing_frame = tk.Frame(master=self.frame)
         combo_label = tk.Label(master=self.placing_frame, text='Placing: ')
         self.block_choice = tk.StringVar()
@@ -96,13 +101,19 @@ class LevelEditor(Subprogram):
     def place_current(self, canvas_x, canvas_y):
         x = canvas_x//self.blocksize
         y = canvas_y//self.blocksize
+        
+        if x >= self.n_blocks or x < 0 or y >= self.n_blocks or y < 0:
+            return
+        
         new_block = constatnts.BLOCK_VALUES[self.block_choice.get()]
 
         if self.board[y][x] == new_block:
             return
         
         self.board[y][x] = new_block
+        self.redraw_block(x,y)
 
+    def redraw_block(self,x,y):
         if self.board_references[y][x]:
             self.canvas.delete(self.board_references[y][x])
             self.board_references[y][x] = None
@@ -119,11 +130,22 @@ class LevelEditor(Subprogram):
         # print(event.x, event.y)
         self.place_current(event.x, event.y)
 
+    def redraw(self):
+        for y in range(self.n_blocks):
+            for x in range(self.n_blocks):
+                self.redraw_block(x,y)
 
     def save(self):
-        pass
+        file = asksaveasfile(defaultextension=[('Bomber Map', '*.map')], filetypes=[('Bomber Map', '*.map')])
+        file.write('\n'.join([ ' '.join([ str(self.board[y][x]) for x in range(self.n_blocks) ]) for y in range(self.n_blocks) ]))
+        file.close()
 
-
+    def load(self):
+        file = askopenfile(defaultextension=[('Bomber Map', '*.map')], filetypes=[('Bomber Map', '*.map')])
+        for y,line in enumerate(file):
+            self.board[y] = list(map(int, line.split()))
+        self.redraw()
+        file.close()
 
 
 class Program:
