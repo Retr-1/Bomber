@@ -1,6 +1,33 @@
 import tkinter as tk
 from tkinter import ttk
 import constatnts
+from PIL import Image, ImageTk
+
+def resize(image, width, height):
+    if width is None and height is None:
+        raise Exception('Both dimensions are None')
+    
+    aspect_ratio = image.width / image.height
+    
+    if width is None:
+        return image.resize((int(height*aspect_ratio), height))
+    if height is None:
+        return image.resize((width, int(width/aspect_ratio)))
+    return image.resize((width,height))
+
+def resize_to_fit(image, width, height):
+    if image.height > image.width:
+        return resize(image, None, height)
+    return resize(image, width, None)
+
+def load_image(filepath, width=None, height=None):
+    return resize(Image.open(filepath), width, height)
+
+class Barrel:
+    def __init__(self, blocksize):
+        self._image = resize_to_fit(Image.open('assets/barrel.png'), blocksize, blocksize)
+        self.sprite = ImageTk.PhotoImage(self._image)
+        
 
 class Subprogram:
     def __init__(self, master):
@@ -33,16 +60,19 @@ class LevelEditor(Subprogram):
         self.blocksize = blocksize
         self.size = size
         self.n_blocks = self.size//self.blocksize
+        self.board = [[constatnts.AIR]*self.n_blocks for i in range(self.n_blocks)]
+        self.board_references = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.canvas = tk.Canvas(master=self.frame, width=size, height=size)
+        self.canvas.bind('<B1-Motion>', self.mouse_motion)
         self.toolbar = tk.Frame(master=self.frame)
         self.load_btn = tk.Button(master=self.toolbar, text='Load Map')
         self.save_btn = tk.Button(master=self.toolbar, text='Save Map')
         self.placing_frame = tk.Frame(master=self.frame)
         combo_label = tk.Label(master=self.placing_frame, text='Placing: ')
-        self.placing = tk.StringVar()
-        self.placing_combo = ttk.Combobox(master=self.placing_frame, values=constatnts.BLOCK_NAMES, textvariable=self.placing, state='readonly')
+        self.block_choice = tk.StringVar()
+        self.placing_combo = ttk.Combobox(master=self.placing_frame, values=constatnts.BLOCK_NAMES, textvariable=self.block_choice, state='readonly')
         self.placing_combo.current(0)
-        self.placing_combo.bind('<<ComboboxSelected>>', lambda x: print(x, self.placing.get()))
+        self.placing_combo.bind('<<ComboboxSelected>>', lambda x: print(x, self.block_choice.get()))
 
         self.toolbar.grid(row=0, column=0, sticky='w')
         self.load_btn.pack(side=tk.LEFT)
@@ -54,12 +84,40 @@ class LevelEditor(Subprogram):
 
         self.draw_grid()
 
+        self.barrel = Barrel(blocksize)
+
     def draw_grid(self):
         for y in range(0, self.size, self.blocksize):
             self.canvas.create_line(0,y,self.size,y)
         
         for x in range(0, self.size, self.blocksize):
             self.canvas.create_line(x,0,x,self.size)
+
+    def place_current(self, canvas_x, canvas_y):
+        x = canvas_x//self.blocksize
+        y = canvas_y//self.blocksize
+        new_block = constatnts.BLOCK_VALUES[self.block_choice.get()]
+
+        if self.board[y][x] == new_block:
+            return
+        
+        self.board[y][x] = new_block
+
+        if self.board_references[y][x]:
+            self.canvas.delete(self.board_references[y][x])
+            self.board_references[y][x] = None
+
+        if self.board[y][x] == constatnts.WALL:
+            # print('wall', x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize)
+            self.board_references[y][x] = self.canvas.create_rectangle(x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize, fill='black')
+        elif self.board[y][x] == constatnts.BARREL:
+            ID = self.canvas.create_image(x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, image=self.barrel.sprite)
+            self.board_references[y][x] = ID
+
+
+    def mouse_motion(self, event):
+        # print(event.x, event.y)
+        self.place_current(event.x, event.y)
 
 
     def save(self):
