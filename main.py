@@ -4,6 +4,7 @@ import constants
 from PIL import Image, ImageTk
 from tkinter.filedialog import asksaveasfile, askopenfile
 import spritesheeter
+import random
 
 def resize(image, width, height):
     if width is None and height is None:
@@ -24,6 +25,11 @@ def resize_to_fit(image, width, height):
 
 def load_image(filepath, width=None, height=None):
     return resize(Image.open(filepath), width, height)
+
+def load_sprite(blocksize, sprite_filepath):
+    image = resize_to_fit(Image.open(sprite_filepath), blocksize, blocksize)
+    sprite = ImageTk.PhotoImage(image) 
+    return sprite
 
 def tint_image(image, color):
     r,g,b,a = image.split()
@@ -51,20 +57,29 @@ class BlockObject:
         self._image = resize_to_fit(Image.open(sprite_filepath), blocksize, blocksize)
         self.sprite = ImageTk.PhotoImage(self._image)  
 
-class Barrel(BlockObject):
-    def __init__(self, blocksize):
-        super().__init__(blocksize, 'assets/barrel.png')
+# class GameObject:
+#     def __init__(self, x, y, blocksize, const_id):
+#         self.x = x
+#         self.y = y
+#         self.blocksize = blocksize
+#         self.const_id = const_id
+
+# class Barrel(GameObject):
+
+
+#     def __init__(self, x, y, blocksize):
+#         super().__init__(x, y, blocksize, constants.BARREL)
 
 
 class Player:
-    SPRITE_DOWN = 0
-    SPRITE_UP = 1
-    SPRITE_LEFT  = 2
-    SPRITE_RIGHT = 3
+    LOOKING_DOWN = 0
+    LOOKING_UP = 1
+    LOOKING_LEFT  = 2
+    LOOKING_RIGHT = 3
 
     SPRITESHEET = spritesheeter.split('assets/player.png')
 
-    def __init__(self, blocksize, color):
+    def __init__(self, blocksize, color, bot, canvas_x, canvas_y):
         def convert(image):
             image = resize_to_fit(image, blocksize, blocksize)
             image = tint_image(image, color)
@@ -73,14 +88,14 @@ class Player:
         self._images_pil = [ [convert(image) for image in row ] for row in self.SPRITESHEET ]
         self.sprites = [ [ImageTk.PhotoImage(image) for image in row] for row in self._images_pil ]
         self.sprites.append( [ ImageTk.PhotoImage(image.transpose(Image.FLIP_LEFT_RIGHT)) for image in self._images_pil[2]] )
+        self.canvas_reference = None
 
-        
+        self.bot = bot
+        self.canvas_x = canvas_x
+        self.canvas_y = canvas_y
 
-        # self.sprite = ImageTk.PhotoImage(self._image)
-        # sprites = [[None]*3 for i in range(4)]
-        # for y in range(3):
-        #     for x in range(3):
-        #         image.crop(x)
+    def first_draw(self, canvas):
+        self.canvas_reference = canvas.create_image(self.canvas_x, self.canvas_y, self.sprites[self.LOOKING_DOWN][1])
 
         
 
@@ -144,7 +159,7 @@ class LevelEditor(Subprogram):
 
         self.draw_grid()
 
-        self.barrel = Barrel(blocksize)
+        self.barrel = BlockObject(blocksize, 'assets/barrel.png')
         self.player = BlockObject(blocksize, 'assets/player_down_1.png')
 
     def draw_grid(self):
@@ -205,6 +220,64 @@ class LevelEditor(Subprogram):
             self.board[y] = list(map(int, line.split()))
         self.redraw()
         file.close()
+
+
+class Game(Subprogram):
+    def __init__(self, master, size, blocksize):
+        super().__init__(master)
+        self.size = size
+        self.blocksize = blocksize
+        self.n_blocks = size//blocksize
+        self.canvas = tk.Canvas(width=size, height=size, master=self.frame)
+        self.canvas.pack()
+        self.board = [[None]*self.n_blocks for i in range(self.n_blocks)]
+        self.canvas_references = [[None]*self.n_blocks for i in range(self.n_blocks)]
+        self.barrel = load_sprite(blocksize, 'assets/barrel.png')
+
+
+    def redraw_block(self, x=None, y=None, canvas_x=None, canvas_y=None):
+        if not x and not y:
+            x,y = canvas_x//self.blocksize, canvas_y//self.blocksize
+
+        if self.canvas_references[y][x]:
+            self.canvas.delete(self.canvas_references[y][x])
+        
+        if self.board[y][x] == constants.WALL:
+            # print('wall', x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize)
+            self.board_references[y][x] = self.canvas.create_rectangle(x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize, fill='black')
+        elif self.board[y][x] == constants.BARREL:
+            ID = self.canvas.create_image(x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, image=self.barrel)
+            self.board_references[y][x] = ID
+
+    def initialize(self, n_humans, n_bots, game_map):
+        self.n_humans = n_humans
+        self.n_bots = n_bots
+        
+        with open(game_map, 'r') as f:
+            self.board = [[int(itm) for itm in line.split()] for line in f]
+
+        spawnpoints = []
+        for y in range(self.n_blocks):
+            for x in range(self.n_blocks):
+                if self.board[y][x] == constants.SPAWNPOINT:
+                    spawnpoints.append((x,y))
+                    self.board[y][x] = constants.AIR
+                else:
+                    self.redraw_block(x,y)
+
+        random.shuffle(spawnpoints)
+
+        self.players = []
+        for i in range(n_humans):
+            x,y = spawnpoints[i]
+            self.players.append(Player(self.blocksize, i, False, x*self.blocksize, y*self.blocksize))
+        for j in range(n_bots):
+            x,y = spawnpoints[j+n_humans]
+            self.players.append(Player(self.blocksize, j+n_humans, True, x*self.blocksize, y*self.blocksize))
+
+                
+
+
 
 
 class Program:
