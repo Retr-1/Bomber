@@ -3,6 +3,7 @@ from tkinter import ttk
 import constants
 from PIL import Image, ImageTk
 from tkinter.filedialog import asksaveasfile, askopenfile
+import spritesheeter
 
 def resize(image, width, height):
     if width is None and height is None:
@@ -61,9 +62,19 @@ class Player:
     SPRITE_LEFT  = 2
     SPRITE_RIGHT = 3
 
+    SPRITESHEET = spritesheeter.split('assets/player.png')
+
     def __init__(self, blocksize, color):
-        self._image = resize_to_fit(Image.open('assets/player_down_1.png'), blocksize, blocksize)
-        self._image = tint_image(self._image, color)
+        def convert(image):
+            image = resize_to_fit(image, blocksize, blocksize)
+            image = tint_image(image, color)
+            return image
+        
+        self._images_pil = [ [convert(image) for image in row ] for row in self.SPRITESHEET ]
+        self.sprites = [ [ImageTk.PhotoImage(image) for image in row] for row in self._images_pil ]
+        self.sprites.append( [ ImageTk.PhotoImage(image.transpose(Image.FLIP_LEFT_RIGHT)) for image in self._images_pil[2]] )
+
+        
 
         # self.sprite = ImageTk.PhotoImage(self._image)
         # sprites = [[None]*3 for i in range(4)]
@@ -249,7 +260,15 @@ class Program:
 
 if __name__ == '__main__':
     p = Program()
-    # player = Player(40, constants.YELLOW)
-    # player._image.show()
+
+    # print(Player.SPRITESHEET)
+    # Player.SPRITESHEET[0][0].show()
+    # player = Player(40, constants.GREEN)
+    # player._images_pil[0][1].show()
+    # canvas = tk.Canvas(width=500,height=500)
+    # canvas.create_image(100,100,image=player.sprites[3][1])
+    # canvas.create_image(100,200,image=player.sprites[2][1])
+    # canvas.pack()
+
     tk.mainloop()
         

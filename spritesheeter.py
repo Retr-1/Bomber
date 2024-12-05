@@ -29,7 +29,7 @@ def split_horizontally(data):
     
     return splits
 
-def split(filepath):
+def split_and_save(filepath):
     image = Image.open(filepath).convert('RGBA')
     # print(image.mode)
     data = np.array(image)
@@ -45,7 +45,25 @@ def split(filepath):
         for j in range(len(splits[i])):
             Image.fromarray(splits[i][j]).save(f'computed/{filepath.split('/')[-1].split('.')[0]}_{i}_{j}.png')
 
+def split(filepath):
+    image = Image.open(filepath).convert('RGBA')
+    # print(image.mode)
+    data = np.array(image)
+    # print(data.shape)
+
+    horizontal = split_horizontally(data)
+    splits = []
+    for x in horizontal:
+        splits.append(split_vertically(x))
+
+    # print(len(splits))
+    for i in range(len(splits)):
+        for j in range(len(splits[i])):
+            splits[i][j] = Image.fromarray(splits[i][j])
+    
+    return splits
+
     
             
-
-split('assets/player.png')
+if __name__ == '__main__':
+    split('assets/player.png')
