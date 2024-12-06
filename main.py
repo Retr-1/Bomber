@@ -129,7 +129,7 @@ class LevelEditor(Subprogram):
         self.block_choice = tk.StringVar()
         self.placing_combo = ttk.Combobox(master=self.placing_frame, values=constants.BLOCK_NAMES, textvariable=self.block_choice, state='readonly')
         self.placing_combo.current(0)
-        self.placing_combo.bind('<<ComboboxSelected>>', lambda x: print(x, self.block_choice.get()))
+        # self.placing_combo.bind('<<ComboboxSelected>>', lambda x: print(x, self.block_choice.get()))
 
         self.toolbar.grid(row=0, column=0, sticky='w')
         self.load_btn.pack(side=tk.LEFT)
@@ -259,8 +259,26 @@ class Game(Subprogram):
 
                 
 
+class LevelSelector(Subprogram):
+    def __init__(self, master, func_from_level_select_to_menu, func_start_game):
+        super().__init__(master)
+        
+        self.lvl_label = tk.Label(master=self.frame, text='Select Level: ')
+        self.n = tk.StringVar()
+        self.lvl_combox = ttk.Combobox(master=self.frame, textvariable=self.n, state='readonly')
+        self.lvl_combox['values'] = ('A*', 'Center', 'Stars')
+        self.lvl_combox.current(0)
+        self.human_count = RangePicker(self.frame, 'Number of Players: ', 0, 10)
+        self.bot_count = RangePicker(self.frame, 'Number of Bots: ', 0, 10)
+        self.play_btn = tk.Button(master=self.frame, text='Start the game', command=func_start_game)
+        self.menu_btn = tk.Button(master=self.frame, text='Back to menu', command=func_from_level_select_to_menu)
 
-
+        self.lvl_label.grid(row=0, column=0)
+        self.lvl_combox.grid(row=0, column=1)
+        self.human_count.frame.grid(row=1, column=0, columnspan=2)
+        self.bot_count.frame.grid(row=2, column=0, columnspan=2)
+        self.menu_btn.grid(row=3, column=0, sticky='nswe')
+        self.play_btn.grid(row=3, column=1, sticky='nswe')
 
 class Program:
     def __init__(self):
@@ -273,25 +291,8 @@ class Program:
         self.menu_btn_play.grid(row=0, column=0, sticky='nswe')
         self.menu_btn_editor.grid(row=1, column=0, sticky='nswe')
 
-        
-        self.level_selector_frame = tk.Frame(master=self.window)
-        self.level_selector_lvl_label = tk.Label(master=self.level_selector_frame, text='Select Level: ')
-        self.level_selector_n = tk.StringVar()
-        self.level_selector_lvl_combox = ttk.Combobox(master=self.level_selector_frame, textvariable=self.level_selector_n, state='readonly')
-        self.level_selector_lvl_combox['values'] = ('A*', 'Center', 'Stars')
-        self.level_selector_lvl_combox.current(0)
-        self.level_selector_human_count = RangePicker(self.level_selector_frame, 'Number of Players: ', 0, 10)
-        self.level_selector_bot_count = RangePicker(self.level_selector_frame, 'Number of Bots: ', 0, 10)
-        self.level_selector_play_btn = tk.Button(master=self.level_selector_frame, text='Start the game', command=self.start_game)
-        self.level_selector_menu_btn = tk.Button(master=self.level_selector_frame, text='Back to menu', command=self.from_level_select_to_menu)
 
-        self.level_selector_lvl_label.grid(row=0, column=0)
-        self.level_selector_lvl_combox.grid(row=0, column=1)
-        self.level_selector_human_count.frame.grid(row=1, column=0, columnspan=2)
-        self.level_selector_bot_count.frame.grid(row=2, column=0, columnspan=2)
-        self.level_selector_menu_btn.grid(row=3, column=0, sticky='nswe')
-        self.level_selector_play_btn.grid(row=3, column=1, sticky='nswe')
-
+        self.level_selector = LevelSelector(self.window, self.from_level_select_to_menu, self.start_game)
 
         self.level_editor = LevelEditor(self.window, 800, 40)
 
@@ -300,13 +301,13 @@ class Program:
 
     def from_menu_to_level_select(self):
         self.menu_frame.pack_forget()
-        self.level_selector_frame.pack()
+        self.level_selector.frame.pack()
 
     def start_game(self):
         pass
 
     def from_level_select_to_menu(self):
-        self.level_selector_frame.pack_forget()
+        self.level_selector.frame.pack_forget()
         self.menu_frame.pack()
 
     def from_menu_to_editor(self):
