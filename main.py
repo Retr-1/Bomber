@@ -77,13 +77,14 @@ class Player:
         self.canvas_x = canvas_x
         self.canvas_y = canvas_y
         self.moving = 0
+        self.speed = blocksize//8
 
     def start_moving(self, direction):
-        print(self.canvas_x, direction, 's')
+        # print(self.canvas_x, direction, 's')
         self.moving |= (1<<direction)
 
     def stop_moving(self, direction):
-        print(self.canvas_x, direction, 'e')
+        # print(self.canvas_x, direction, 'e')
         self.moving ^= (1<<direction)&self.moving
 
     def update(self, timedelta=1/60):
@@ -289,6 +290,33 @@ class Game(Subprogram):
     def drop_bomb(self, player):
         print('drop', player.canvas_x)
 
+    def loop(self):
+        for player in self.players:
+            # player:Player
+            move = [0,0]
+            if player.moving & constants.MOVING_UP:
+                move[1] -= 1
+            if player.moving & constants.MOVING_DOWN:
+                move[1] += 1
+            if player.moving & constants.MOVING_LEFT:
+                move[0] -= 1
+            if player.moving & constants.MOVING_RIGHT:
+                move[0] += 1
+            
+            value = (move[0]**2 + move[1]**2)**0.5
+
+            if value == 0:
+                continue
+
+            move = (move[0]/value*player.speed, move[1]/value*player.speed)
+
+            player.canvas_x += int(move[0])
+            player.canvas_y += int(move[1])
+            
+            self.canvas.coords(player.canvas_reference, player.canvas_x, player.canvas_y)
+
+        self.canvas.after(16, self.loop)
+
                 
 
 class LevelSelector(Subprogram):
@@ -353,6 +381,7 @@ class Program:
     def start_game(self):
         print(self.level_selector.human_count.get(), self.level_selector.bot_count.get(), self.level_selector.map_name.get())
         self.game.initialize(self.level_selector.human_count.get(), self.level_selector.bot_count.get(), self.level_selector.map_name.get())
+        self.game.loop()
         self.level_selector.frame.pack_forget()
         self.game.frame.pack()
 
