@@ -5,6 +5,7 @@ from PIL import Image, ImageTk
 from tkinter.filedialog import asksaveasfile, askopenfile
 import spritesheeter
 import random
+import os
 
 def resize(image, width, height):
     if width is None and height is None:
@@ -86,13 +87,13 @@ class Subprogram:
         self.frame = tk.Frame(master=master)
 
 class RangePicker(Subprogram):
-    def __init__(self, master, label_text, min, max):
+    def __init__(self, master, label_text, min, max, default):
         super().__init__(master)
         self.min = min
         self.max = max
         self.left_btn = tk.Button(master=self.frame, text='-', command=lambda: self.add(-1))
         self.right_btn = tk.Button(master=self.frame, text='+', command=lambda: self.add(1))
-        self.count = min
+        self.count = default
         self.count_label = tk.Label(master=self.frame, text=f'{self.count}')
         self.label = tk.Label(master=self.frame, text=label_text)
         
@@ -105,6 +106,9 @@ class RangePicker(Subprogram):
         if self.min <= self.count+x <= self.max:
             self.count += x
             self.count_label.configure(text=f'{self.count}')
+
+    def get(self):
+        return self.count
 
 class LevelEditor(Subprogram):
     def __init__(self, master, size, blocksize):
@@ -264,12 +268,13 @@ class LevelSelector(Subprogram):
         super().__init__(master)
         
         self.lvl_label = tk.Label(master=self.frame, text='Select Level: ')
-        self.n = tk.StringVar()
-        self.lvl_combox = ttk.Combobox(master=self.frame, textvariable=self.n, state='readonly')
-        self.lvl_combox['values'] = ('A*', 'Center', 'Stars')
+        self.map_name = tk.StringVar()
+        self.lvl_combox = ttk.Combobox(master=self.frame, textvariable=self.map_name, state='readonly')
+        self.lvl_combox['values'] = os.listdir('maps/')
         self.lvl_combox.current(0)
-        self.human_count = RangePicker(self.frame, 'Number of Players: ', 0, 10)
-        self.bot_count = RangePicker(self.frame, 'Number of Bots: ', 0, 10)
+        self.lvl_combox.bind('<<ComboboxSelected>>', self.selection_changed)
+        self.human_count = RangePicker(self.frame, 'Number of Players: ', 0, 4, 1)
+        self.bot_count = RangePicker(self.frame, 'Number of Bots: ', 0, 4, 1)
         self.play_btn = tk.Button(master=self.frame, text='Start the game', command=func_start_game)
         self.menu_btn = tk.Button(master=self.frame, text='Back to menu', command=func_from_level_select_to_menu)
 
@@ -279,6 +284,17 @@ class LevelSelector(Subprogram):
         self.bot_count.frame.grid(row=2, column=0, columnspan=2)
         self.menu_btn.grid(row=3, column=0, sticky='nswe')
         self.play_btn.grid(row=3, column=1, sticky='nswe')
+
+        self.max_players = self.get_max_players(self.map_name.get())
+        # print(self.max_players)
+
+    def selection_changed(self, event):
+        self.max_players = self.get_max_players(self.map_name.get())
+        # print(self.max_players, event)
+
+    def get_max_players(self, map_name):
+        with open('./maps/' + map_name, 'r') as f:
+            return f.read().count(str(constants.SPAWNPOINT))
 
 class Program:
     def __init__(self):
