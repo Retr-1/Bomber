@@ -105,10 +105,10 @@ class Player:
         self.moving ^= (1<<direction)&self.moving
         self.animation = self.create_animation()
 
-        # if not self.animation:
-        #     for d,s in [(constants.MOVING_UP, self.LOOKING_UP), (constants.MOVING_DOWN, self.LOOKING_DOWN),(constants.MOVING_LEFT, self.LOOKING_LEFT),(constants.MOVING_RIGHT, self.LOOKING_RIGHT)]:
-        #         if d & direction:
-        #             self.animation = ManualAnimation([self.sprites[s][1]], 100)
+        if self.moving == 0:
+            for d,s in [(constants.MOVING_UP, self.LOOKING_UP), (constants.MOVING_DOWN, self.LOOKING_DOWN),(constants.MOVING_LEFT, self.LOOKING_LEFT),(constants.MOVING_RIGHT, self.LOOKING_RIGHT)]:
+                if d & (1<<direction):
+                    self.animation = ManualAnimation([self.sprites[s][1]], 100)
 
 
     def create_animation(self):
@@ -340,6 +340,11 @@ class Game(Subprogram):
             
             value = (move[0]**2 + move[1]**2)**0.5
 
+            if player.animation:
+                player.animation.step(16)
+                self.canvas.itemconfigure(player.canvas_reference, image=player.animation.current_frame)
+                print(player.animation.time)
+
             if value == 0:
                 continue
 
@@ -347,10 +352,7 @@ class Game(Subprogram):
 
             player.canvas_x += int(move[0])
             player.canvas_y += int(move[1])
-            player.animation.step(16)
-            print(player.animation.time)
             
-            self.canvas.itemconfigure(player.canvas_reference, image=player.animation.current_frame)
             self.canvas.coords(player.canvas_reference, player.canvas_x, player.canvas_y)
 
         self.canvas.after(16, self.loop)
