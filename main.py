@@ -52,7 +52,20 @@ def tint_image(image, color):
         b = Image.eval(b, lambda x: x*factor)
         return Image.merge('RGBA', (r,g,b,a))
 
+class ManualAnimation:
+    def __init__(self, frames, frame_length):
+        # frame_length is in ms
 
+        self.frames = frames
+        self.time = 0
+        self.frame_length = frame_length
+        self.total_length = self.frame_length*len(self.frames)
+        self.current_frame = frames[0]
+
+    def step(self, dt):
+        self.time = (self.time + dt) % self.total_length
+        self.current_frame = self.frames[self.time // self.frame_length]
+        
 
 class Player:
     LOOKING_DOWN = 0
@@ -78,17 +91,38 @@ class Player:
         self.canvas_y = canvas_y
         self.moving = 0
         self.speed = blocksize//8
+        self.animation = None
 
     def start_moving(self, direction):
         # print(self.canvas_x, direction, 's')
-        self.moving |= (1<<direction)
+        if not self.moving & (1<<direction):
+            self.moving |= (1<<direction)
+            self.animation = self.create_animation()
+        # print(self.animation, self.moving, self.moving & constants.MOVING_DOWN)
 
     def stop_moving(self, direction):
         # print(self.canvas_x, direction, 'e')
         self.moving ^= (1<<direction)&self.moving
+        self.animation = self.create_animation()
 
-    def update(self, timedelta=1/60):
-        pass
+        # if not self.animation:
+        #     for d,s in [(constants.MOVING_UP, self.LOOKING_UP), (constants.MOVING_DOWN, self.LOOKING_DOWN),(constants.MOVING_LEFT, self.LOOKING_LEFT),(constants.MOVING_RIGHT, self.LOOKING_RIGHT)]:
+        #         if d & direction:
+        #             self.animation = ManualAnimation([self.sprites[s][1]], 100)
+
+
+    def create_animation(self):
+        FRAME_LENGTH = 100
+        if self.moving & constants.MOVING_UP:
+            return ManualAnimation(self.sprites[self.LOOKING_UP] + self.sprites[self.LOOKING_UP][-2:0:-1], FRAME_LENGTH*3//2)
+        elif self.moving & constants.MOVING_DOWN:
+            return ManualAnimation(self.sprites[self.LOOKING_DOWN] + self.sprites[self.LOOKING_DOWN][-2:0:-1], FRAME_LENGTH*3//2)
+        elif self.moving & constants.MOVING_LEFT:
+            return ManualAnimation(self.sprites[self.LOOKING_LEFT], FRAME_LENGTH)
+        elif self.moving & constants.MOVING_RIGHT:
+            return ManualAnimation(self.sprites[self.LOOKING_RIGHT], FRAME_LENGTH)
+        
+        return None
 
     def draw(self):
         if self.canvas_reference == None:
@@ -292,7 +326,8 @@ class Game(Subprogram):
 
     def loop(self):
         for player in self.players:
-            # player:Player
+            player:Player
+
             move = [0,0]
             if player.moving & constants.MOVING_UP:
                 move[1] -= 1
@@ -312,7 +347,10 @@ class Game(Subprogram):
 
             player.canvas_x += int(move[0])
             player.canvas_y += int(move[1])
+            player.animation.step(16)
+            print(player.animation.time)
             
+            self.canvas.itemconfigure(player.canvas_reference, image=player.animation.current_frame)
             self.canvas.coords(player.canvas_reference, player.canvas_x, player.canvas_y)
 
         self.canvas.after(16, self.loop)
