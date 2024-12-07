@@ -72,11 +72,22 @@ class Player:
         self.sprites = [ [ImageTk.PhotoImage(image) for image in row] for row in self._images_pil ]
         self.sprites.append( [ ImageTk.PhotoImage(image.transpose(Image.FLIP_LEFT_RIGHT)) for image in self._images_pil[2]] )
         self.canvas_reference = None
-        self.heading = self.LOOKING_DOWN
         self.canvas:tk.Canvas = canvas
         self.bot = bot
         self.canvas_x = canvas_x
         self.canvas_y = canvas_y
+        self.moving = 0
+
+    def start_moving(self, direction):
+        print(self.canvas_x, direction, 's')
+        self.moving |= (1<<direction)
+
+    def stop_moving(self, direction):
+        print(self.canvas_x, direction, 'e')
+        self.moving ^= (1<<direction)&self.moving
+
+    def update(self, timedelta=1/60):
+        pass
 
     def draw(self):
         if self.canvas_reference == None:
@@ -257,16 +268,26 @@ class Game(Subprogram):
 
         random.shuffle(spawnpoints)
 
+        # (UP,DOWN,LEFT,RIGHT,BOMB)
+        BINDS = (('w','s','a','d','q'), ("Up", "Down", "Left", "Right", '/'))
         self.players = []
         for i in range(n_humans):
             x,y = spawnpoints[i]
             self.players.append(Player(self.blocksize, i, False, x*self.blocksize, y*self.blocksize, self.canvas))
+            for j in range(4):
+                self.canvas.bind_all(f'<KeyPress-{BINDS[i][j]}>', lambda event, j=j, player=self.players[i]: player.start_moving(j))
+                self.canvas.bind_all(f'<KeyRelease-{BINDS[i][j]}>', lambda event, j=j, player=self.players[i]: player.stop_moving(j))
+            self.canvas.bind_all(f'{BINDS[i][4]}', lambda event, player=self.players[i]: self.drop_bomb(player))
+
         for j in range(n_bots):
             x,y = spawnpoints[j+n_humans]
             self.players.append(Player(self.blocksize, j+n_humans, True, x*self.blocksize, y*self.blocksize, self.canvas))
 
         for player in self.players:
             player.draw()
+
+    def drop_bomb(self, player):
+        print('drop', player.canvas_x)
 
                 
 
