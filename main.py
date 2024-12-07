@@ -62,7 +62,7 @@ class Player:
 
     SPRITESHEET = spritesheeter.split('assets/player.png')
 
-    def __init__(self, blocksize, color, bot, canvas_x, canvas_y):
+    def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas):
         def convert(image):
             image = resize_to_fit(image, blocksize, blocksize)
             image = tint_image(image, color)
@@ -72,13 +72,15 @@ class Player:
         self.sprites = [ [ImageTk.PhotoImage(image) for image in row] for row in self._images_pil ]
         self.sprites.append( [ ImageTk.PhotoImage(image.transpose(Image.FLIP_LEFT_RIGHT)) for image in self._images_pil[2]] )
         self.canvas_reference = None
-
+        self.heading = self.LOOKING_DOWN
+        self.canvas:tk.Canvas = canvas
         self.bot = bot
         self.canvas_x = canvas_x
         self.canvas_y = canvas_y
 
-    def first_draw(self, canvas):
-        self.canvas_reference = canvas.create_image(self.canvas_x, self.canvas_y, self.sprites[self.LOOKING_DOWN][1])
+    def draw(self):
+        if self.canvas_reference == None:
+            self.canvas_reference = self.canvas.create_image(self.canvas_x, self.canvas_y, image=self.sprites[self.LOOKING_DOWN][1])
 
         
 
@@ -222,24 +224,26 @@ class Game(Subprogram):
 
 
     def redraw_block(self, x=None, y=None, canvas_x=None, canvas_y=None):
-        if not x and not y:
-            x,y = canvas_x//self.blocksize, canvas_y//self.blocksize
+        if x == None:
+            x = canvas_x//self.blocksize
+        if y == None:
+            y = canvas_y//self.blocksize
 
         if self.canvas_references[y][x]:
             self.canvas.delete(self.canvas_references[y][x])
         
         if self.board[y][x] == constants.WALL:
             # print('wall', x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize)
-            self.board_references[y][x] = self.canvas.create_rectangle(x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize, fill='black')
+            self.canvas_references[y][x] = self.canvas.create_rectangle(x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize, fill='black')
         elif self.board[y][x] == constants.BARREL:
             ID = self.canvas.create_image(x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, image=self.barrel)
-            self.board_references[y][x] = ID
+            self.canvas_references[y][x] = ID
 
     def initialize(self, n_humans, n_bots, game_map):
         self.n_humans = n_humans
         self.n_bots = n_bots
         
-        with open(game_map, 'r') as f:
+        with open('./maps/' + game_map, 'r') as f:
             self.board = [[int(itm) for itm in line.split()] for line in f]
 
         spawnpoints = []
@@ -256,10 +260,13 @@ class Game(Subprogram):
         self.players = []
         for i in range(n_humans):
             x,y = spawnpoints[i]
-            self.players.append(Player(self.blocksize, i, False, x*self.blocksize, y*self.blocksize))
+            self.players.append(Player(self.blocksize, i, False, x*self.blocksize, y*self.blocksize, self.canvas))
         for j in range(n_bots):
             x,y = spawnpoints[j+n_humans]
-            self.players.append(Player(self.blocksize, j+n_humans, True, x*self.blocksize, y*self.blocksize))
+            self.players.append(Player(self.blocksize, j+n_humans, True, x*self.blocksize, y*self.blocksize, self.canvas))
+
+        for player in self.players:
+            player.draw()
 
                 
 
@@ -299,6 +306,8 @@ class LevelSelector(Subprogram):
 class Program:
     def __init__(self):
         self.window = tk.Tk()
+        self.size = 800
+        self.blocksize = 40
         
         self.menu_frame = tk.Frame(master=self.window)
         self.menu_btn_play = tk.Button(master=self.menu_frame, text='Play', font='Helvetica 32', command=self.from_menu_to_level_select)
@@ -310,8 +319,9 @@ class Program:
 
         self.level_selector = LevelSelector(self.window, self.from_level_select_to_menu, self.start_game)
 
-        self.level_editor = LevelEditor(self.window, 800, 40)
+        self.level_editor = LevelEditor(self.window, self.size, self.blocksize)
 
+        self.game = Game(self.window, self.size, self.blocksize)
 
         self.menu_frame.pack()
 
@@ -320,7 +330,10 @@ class Program:
         self.level_selector.frame.pack()
 
     def start_game(self):
-        pass
+        print(self.level_selector.human_count.get(), self.level_selector.bot_count.get(), self.level_selector.map_name.get())
+        self.game.initialize(self.level_selector.human_count.get(), self.level_selector.bot_count.get(), self.level_selector.map_name.get())
+        self.level_selector.frame.pack_forget()
+        self.game.frame.pack()
 
     def from_level_select_to_menu(self):
         self.level_selector.frame.pack_forget()
