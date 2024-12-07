@@ -346,13 +346,16 @@ class Game(Subprogram):
             if value != 0:
                 move = (int(move[0]/value*player.speed), int(move[1]/value*player.speed))
 
+                oldx,oldy = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize
+
                 player.canvas_x += move[0]
                 player.canvas_y += move[1]
 
                 x,y = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize
                 # print(x,y)
-                if x < 0 or x >= self.n_blocks or y < 0 or y >= self.n_blocks or self.board[y][x] != constants.AIR:
+                if x < 0 or x >= self.n_blocks or self.board[oldy][x] != constants.AIR:
                     player.canvas_x -= move[0]
+                if y < 0 or y >= self.n_blocks or self.board[y][oldx] != constants.AIR:
                     player.canvas_y -= move[1]
 
             if player.animation:
