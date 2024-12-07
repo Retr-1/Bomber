@@ -92,6 +92,7 @@ class Player:
         self.moving = 0
         self.speed = blocksize//8
         self.animation = None
+        self.blocksize = blocksize
 
     def start_moving(self, direction):
         # print(self.canvas_x, direction, 's')
@@ -103,12 +104,13 @@ class Player:
     def stop_moving(self, direction):
         # print(self.canvas_x, direction, 'e')
         self.moving ^= (1<<direction)&self.moving
-        self.animation = self.create_moving_animation()
 
         if self.moving == 0:
             for d,s in [(constants.MOVING_UP, self.LOOKING_UP), (constants.MOVING_DOWN, self.LOOKING_DOWN),(constants.MOVING_LEFT, self.LOOKING_LEFT),(constants.MOVING_RIGHT, self.LOOKING_RIGHT)]:
                 if d & (1<<direction):
                     self.animation = ManualAnimation([self.sprites[s][1]], 100)
+        else:
+            self.animation = self.create_moving_animation()
 
 
     def create_moving_animation(self):
@@ -126,7 +128,8 @@ class Player:
 
     def draw(self):
         if self.canvas_reference == None:
-            self.canvas_reference = self.canvas.create_image(self.canvas_x, self.canvas_y, image=self.sprites[self.LOOKING_DOWN][1])
+            sprite = self.sprites[self.LOOKING_DOWN][1]
+            self.canvas_reference = self.canvas.create_image(self.canvas_x, self.canvas_y, image=sprite, anchor='center')
 
         
 
@@ -308,7 +311,7 @@ class Game(Subprogram):
         self.players = []
         for i in range(n_humans):
             x,y = spawnpoints[i]
-            self.players.append(Player(self.blocksize, i, False, x*self.blocksize, y*self.blocksize, self.canvas))
+            self.players.append(Player(self.blocksize, i, False, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas))
             for j in range(4):
                 self.canvas.bind_all(f'<KeyPress-{BINDS[i][j]}>', lambda event, j=j, player=self.players[i]: player.start_moving(j))
                 self.canvas.bind_all(f'<KeyRelease-{BINDS[i][j]}>', lambda event, j=j, player=self.players[i]: player.stop_moving(j))
@@ -316,7 +319,7 @@ class Game(Subprogram):
 
         for j in range(n_bots):
             x,y = spawnpoints[j+n_humans]
-            self.players.append(Player(self.blocksize, j+n_humans, True, x*self.blocksize, y*self.blocksize, self.canvas))
+            self.players.append(Player(self.blocksize, j+n_humans, True, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas))
 
         for player in self.players:
             player.draw()
@@ -340,20 +343,31 @@ class Game(Subprogram):
             
             value = (move[0]**2 + move[1]**2)**0.5
 
+            if value != 0:
+                move = (int(move[0]/value*player.speed), int(move[1]/value*player.speed))
+
+                player.canvas_x += move[0]
+                player.canvas_y += move[1]
+
+                x,y = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize
+                # print(x,y)
+                if x < 0 or x >= self.n_blocks or y < 0 or y >= self.n_blocks or self.board[y][x] != constants.AIR:
+                    player.canvas_x -= move[0]
+                    player.canvas_y -= move[1]
+
             if player.animation:
                 player.animation.step(16)
                 self.canvas.itemconfigure(player.canvas_reference, image=player.animation.current_frame)
-                print(player.animation.time)
-
-            if value == 0:
-                continue
-
-            move = (move[0]/value*player.speed, move[1]/value*player.speed)
-
-            player.canvas_x += int(move[0])
-            player.canvas_y += int(move[1])
+                self.canvas.tag_raise(player.canvas_reference)
+                # print(player.animation.time)
             
             self.canvas.coords(player.canvas_reference, player.canvas_x, player.canvas_y)
+            x,y = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize + 1
+            for x in range(x-1, x+2):
+                if 0 <= y < self.n_blocks and 0 <= x < self.n_blocks:
+                    # self.redraw_block(x, y)
+                    if self.canvas_references[y][x]:
+                        self.canvas.tag_raise(self.canvas_references[y][x])
 
         self.canvas.after(16, self.loop)
 
