@@ -97,13 +97,13 @@ class Player:
         # print(self.canvas_x, direction, 's')
         if not self.moving & (1<<direction):
             self.moving |= (1<<direction)
-            self.animation = self.create_animation()
+            self.animation = self.create_moving_animation()
         # print(self.animation, self.moving, self.moving & constants.MOVING_DOWN)
 
     def stop_moving(self, direction):
         # print(self.canvas_x, direction, 'e')
         self.moving ^= (1<<direction)&self.moving
-        self.animation = self.create_animation()
+        self.animation = self.create_moving_animation()
 
         if self.moving == 0:
             for d,s in [(constants.MOVING_UP, self.LOOKING_UP), (constants.MOVING_DOWN, self.LOOKING_DOWN),(constants.MOVING_LEFT, self.LOOKING_LEFT),(constants.MOVING_RIGHT, self.LOOKING_RIGHT)]:
@@ -111,7 +111,7 @@ class Player:
                     self.animation = ManualAnimation([self.sprites[s][1]], 100)
 
 
-    def create_animation(self):
+    def create_moving_animation(self):
         FRAME_LENGTH = 100
         if self.moving & constants.MOVING_UP:
             return ManualAnimation(self.sprites[self.LOOKING_UP] + self.sprites[self.LOOKING_UP][-2:0:-1], FRAME_LENGTH*3//2)
