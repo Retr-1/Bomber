@@ -267,7 +267,7 @@ class RangePicker(Subprogram):
         return self.count
 
 class LevelEditor(Subprogram):
-    def __init__(self, master, size, blocksize):
+    def __init__(self, master, size, blocksize, func_back_to_menu):
         super().__init__(master)
         self.blocksize = blocksize
         self.size = size
@@ -288,6 +288,8 @@ class LevelEditor(Subprogram):
         self.toolbar = tk.Frame(master=self.frame)
         self.load_btn = tk.Button(master=self.toolbar, text='Load Map', command=self.load)
         self.save_btn = tk.Button(master=self.toolbar, text='Save Map', command=self.save)
+        self.back_to_menu_btn = tk.Button(master=self.toolbar, text='Back to menu', command=func_back_to_menu)
+        self.reset_btn = tk.Button(master=self.toolbar, text='Reset', command=self.reset)
         self.placing_frame = tk.Frame(master=self.frame)
         combo_label = tk.Label(master=self.placing_frame, text='Placing: ')
         self.block_choice = tk.StringVar()
@@ -295,9 +297,11 @@ class LevelEditor(Subprogram):
         self.placing_combo.current(0)
         # self.placing_combo.bind('<<ComboboxSelected>>', lambda x: print(x, self.block_choice.get()))
 
-        self.toolbar.grid(row=0, column=0, sticky='w')
-        self.load_btn.pack(side=tk.LEFT)
-        self.save_btn.pack(side=tk.LEFT)
+        self.toolbar.grid(row=0, column=0, sticky='nswe')
+        self.load_btn.pack(side=tk.LEFT, anchor='w')
+        self.save_btn.pack(side=tk.LEFT, anchor='w')
+        self.back_to_menu_btn.pack(side=tk.RIGHT, anchor='e')
+        self.reset_btn.pack(side=tk.RIGHT, anchor='e')
         self.canvas.grid(row=1, column=0)
         self.placing_frame.grid(row=2, column=0)
         combo_label.pack(side=tk.LEFT)
@@ -314,6 +318,11 @@ class LevelEditor(Subprogram):
         self.sprites[constants.COOLDOWN_BUFF], self.sprites[constants.COOLDOWN_DEBUFF] = create_scalers(Image.open('assets/cooldown.png'), self.blocksize, 0.8)
         self.sprites[constants.SHIELD] = load_sprite(blocksize, 'assets/shield.png')
 
+    def reset(self):
+        for y in range(self.n_blocks):
+            for x in range(self.n_blocks):
+                self.board[y][x] = constants.AIR
+                self.redraw_block(x, y)
 
     def draw_grid(self):
         for y in range(0, self.size, self.blocksize):
@@ -331,7 +340,7 @@ class LevelEditor(Subprogram):
         
         new_block = constants.BLOCK_VALUES[self.block_choice.get()]
 
-        if self.board[y][x] == new_block:
+        if self.board[y][x] == new_block or (self.board[y][x] != constants.AIR and new_block != constants.AIR):
             return
         
         self.board[y][x] = new_block
@@ -588,10 +597,14 @@ class Program:
 
         self.level_selector = LevelSelector(self.window, self.from_level_select_to_menu, self.start_game)
 
-        self.level_editor = LevelEditor(self.window, self.size, self.blocksize)
+        self.level_editor = LevelEditor(self.window, self.size, self.blocksize, self.from_editor_to_menu)
 
         self.game = Game(self.window, self.size, self.blocksize)
 
+        self.menu_frame.pack()
+
+    def from_editor_to_menu(self):
+        self.level_editor.frame.pack_forget()
         self.menu_frame.pack()
 
     def from_menu_to_level_select(self):
