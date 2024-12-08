@@ -129,6 +129,7 @@ class Player:
         self.canvas_x = canvas_x
         self.canvas_y = canvas_y
         self.moving = 0
+        self.dead = False
         
         self.speed = blocksize//8
         self.bomb_cooldown = 100
@@ -318,6 +319,7 @@ class Game(Subprogram):
         self.bomb_frames = bomb_and_explosion[:4]
         self.explosion_frames = bomb_and_explosion[4:-1]
         # self.fire_frames = load_and_flatten_spritesheet(self.blocksize+10, 'assets/fire.png', 0, 40)
+        self.death_frames = load_and_flatten_spritesheet(self.blocksize+30, 'assets/death.png', 0, 40)
 
 
     def redraw_block(self, x=None, y=None, canvas_x=None, canvas_y=None):
@@ -373,6 +375,9 @@ class Game(Subprogram):
             player.draw()
 
     def drop_bomb(self, player):
+        if player.dead:
+            return
+        
         print('drop', player.canvas_x)
         gridx,gridy = player.canvas_x//self.blocksize*self.blocksize + self.blocksize/2, player.canvas_y//self.blocksize*self.blocksize + self.blocksize/2
         animation = AnimationPlayer(self.bomb_frames, 300, self.canvas, gridx, gridy, lambda: self.explode_bomb(player, gridx, gridy), True)
@@ -400,12 +405,25 @@ class Game(Subprogram):
                     self.canvas.delete(self.canvas_references[ny][nx])
                     self.canvas_references[ny][nx] = None
 
+                for player in self.players:
+                    px,py = player.canvas_x//self.blocksize, player.canvas_y//self.blocksize
+                    if px == nx and py == ny:
+                        self.hit(player)
+
                 animation = AnimationPlayer(self.explosion_frames, 100, self.canvas, nx*self.blocksize+self.blocksize/2, ny*self.blocksize+self.blocksize/2, destroy_reference_on_end=True)
                 animation.play()
 
+    def hit(self, player:Player):
+        player.dead = True
+        self.canvas.delete(player.canvas_reference)
+        player.canvas_reference = None
+        # AnimationPlayer(self.death_frames, 100, self.canvas, player.canvas_x, player.canvas_y, destroy_reference_on_end=True).play()
 
     def loop(self):
         for player in self.players:
+            if player.dead:
+                continue
+
             player:Player
 
             move = [0,0]

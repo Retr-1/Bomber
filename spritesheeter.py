@@ -80,4 +80,4 @@ if __name__ == '__main__':
     import os
     for x in os.listdir('./computed'):
         os.remove(f'./computed/{x}')
-    split_and_save('assets/fire.png', 0, 40)
+    split_and_save('assets/death.png', 0, 40)
