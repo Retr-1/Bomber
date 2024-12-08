@@ -75,7 +75,7 @@ class ManualAnimation:
         
 
 class AnimationPlayer:
-    def __init__(self, frames, frame_length, canvas, canvas_x, canvas_y, func_on_end=None):
+    def __init__(self, frames, frame_length, canvas, canvas_x, canvas_y, func_on_end=None, destroy_reference_on_end=False):
         self.canvas:tk.Canvas = canvas
         self.frames = frames
         self.frame_length = frame_length
@@ -84,6 +84,7 @@ class AnimationPlayer:
         self.canvas_x = canvas_x
         self.cavnas_y = canvas_y
         self.func_on_end = func_on_end
+        self.destroy_reference_on_end = destroy_reference_on_end
 
     def next_frame(self):
         self.index += 1
@@ -91,6 +92,8 @@ class AnimationPlayer:
         if self.index >= len(self.frames):
             if self.func_on_end:
                 self.func_on_end()
+            if self.destroy_reference_on_end:
+                self.canvas.delete(self.canvas_reference)
             return
         
         self.canvas.itemconfigure(self.canvas_reference, image=self.frames[self.index])
@@ -126,7 +129,12 @@ class Player:
         self.canvas_x = canvas_x
         self.canvas_y = canvas_y
         self.moving = 0
+        
         self.speed = blocksize//8
+        self.bomb_cooldown = 100
+        self.bomb_speed = 100
+        self.bomb_range = 4
+
         self.animation = None
         self.blocksize = blocksize
 
@@ -309,7 +317,7 @@ class Game(Subprogram):
         bomb_and_explosion = load_and_flatten_spritesheet(self.blocksize+10, 'assets/bomb.png', 50, 20)
         self.bomb_frames = bomb_and_explosion[:4]
         self.explosion_frames = bomb_and_explosion[4:-1]
-        
+        # self.fire_frames = load_and_flatten_spritesheet(self.blocksize+10, 'assets/fire.png', 0, 40)
 
 
     def redraw_block(self, x=None, y=None, canvas_x=None, canvas_y=None):
@@ -367,15 +375,33 @@ class Game(Subprogram):
     def drop_bomb(self, player):
         print('drop', player.canvas_x)
         gridx,gridy = player.canvas_x//self.blocksize*self.blocksize + self.blocksize/2, player.canvas_y//self.blocksize*self.blocksize + self.blocksize/2
-        animation = AnimationPlayer(self.bomb_frames, 300, self.canvas, gridx, gridy, lambda: self.explode_bomb(animation.canvas_reference, player, gridx, gridy))
+        animation = AnimationPlayer(self.bomb_frames, 300, self.canvas, gridx, gridy, lambda: self.explode_bomb(player, gridx, gridy), True)
         animation.play()
 
-    def explode_bomb(self, bomb_reference, placed_by, canvas_x, canvas_y):
+    def explode_bomb(self, placed_by:Player, canvas_x, canvas_y):
         print('exploding...', len(self.explosion_frames))
-        self.canvas.delete(bomb_reference)
-        # canvas_x, canvas_y = x*self.blocksize + self.blocksize/2, y*self.blocksize + self.blocksize/2
-        animation = AnimationPlayer(self.explosion_frames, 100, self.canvas, canvas_x, canvas_y, lambda: self.canvas.delete(animation.canvas_reference))
+        # self.canvas.delete(bomb_reference)
+
+        animation = AnimationPlayer(self.explosion_frames, 100, self.canvas, canvas_x, canvas_y, destroy_reference_on_end=True)
         animation.play()
+        # fire_animation = AnimationPlayer(self.fire_frames, 40, self.canvas, canvas_x, canvas_y, destroy_reference_on_end=True)
+        # fire_animation.play()
+
+        x,y = canvas_x//self.blocksize, canvas_y//self.blocksize
+        for dx,dy in ((0,-1), (0,1), (-1,0), (1,0)):
+            for i in range(1, placed_by.bomb_range):
+                nx,ny = int(x+dx*i), int(y+dy*i)
+
+                if nx < 0 or nx >= self.n_blocks or ny < 0 or ny >= self.n_blocks or self.board[ny][nx] == constants.WALL:
+                    break
+
+                if self.board[ny][nx] == constants.BARREL:
+                    self.board[ny][nx] = constants.AIR
+                    self.canvas.delete(self.canvas_references[ny][nx])
+                    self.canvas_references[ny][nx] = None
+
+                animation = AnimationPlayer(self.explosion_frames, 100, self.canvas, nx*self.blocksize+self.blocksize/2, ny*self.blocksize+self.blocksize/2, destroy_reference_on_end=True)
+                animation.play()
 
 
     def loop(self):
