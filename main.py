@@ -6,6 +6,7 @@ from tkinter.filedialog import asksaveasfile, askopenfile
 import spritesheeter
 import random
 import os
+import time
 
 def resize(image, width, height):
     if width is None and height is None:
@@ -130,9 +131,10 @@ class Player:
         self.canvas_y = canvas_y
         self.moving = 0
         self.dead = False
+        self.time_of_last_bomb = 0
         
         self.speed = blocksize//8
-        self.bomb_cooldown = 100
+        self.bomb_cooldown = 2 # seconds
         self.bomb_speed = 100
         self.bomb_range = 4
 
@@ -319,7 +321,7 @@ class Game(Subprogram):
         self.bomb_frames = bomb_and_explosion[:4]
         self.explosion_frames = bomb_and_explosion[4:-1]
         # self.fire_frames = load_and_flatten_spritesheet(self.blocksize+10, 'assets/fire.png', 0, 40)
-        self.death_frames = load_and_flatten_spritesheet(self.blocksize+30, 'assets/death.png', 0, 40)
+        # self.death_frames = load_and_flatten_spritesheet(self.blocksize+30, 'assets/death.png', 0, 40)
 
 
     def redraw_block(self, x=None, y=None, canvas_x=None, canvas_y=None):
@@ -374,10 +376,11 @@ class Game(Subprogram):
         for player in self.players:
             player.draw()
 
-    def drop_bomb(self, player):
-        if player.dead:
+    def drop_bomb(self, player:Player):
+        if player.dead or time.time() - player.time_of_last_bomb < player.bomb_cooldown:
             return
         
+        player.time_of_last_bomb = time.time()
         print('drop', player.canvas_x)
         gridx,gridy = player.canvas_x//self.blocksize*self.blocksize + self.blocksize/2, player.canvas_y//self.blocksize*self.blocksize + self.blocksize/2
         animation = AnimationPlayer(self.bomb_frames, 300, self.canvas, gridx, gridy, lambda: self.explode_bomb(player, gridx, gridy), True)
@@ -385,7 +388,6 @@ class Game(Subprogram):
 
     def explode_bomb(self, placed_by:Player, canvas_x, canvas_y):
         print('exploding...', len(self.explosion_frames))
-        # self.canvas.delete(bomb_reference)
 
         animation = AnimationPlayer(self.explosion_frames, 100, self.canvas, canvas_x, canvas_y, destroy_reference_on_end=True)
         animation.play()
