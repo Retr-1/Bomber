@@ -28,7 +28,7 @@ def split_horizontally(data, alpha_threshold=0, min_length=0):
     for y in range(data.shape[0]):
         if np.all(data[y,:,3] <= alpha_threshold):
             if y-start >= min_length and start != -1:
-                print(start,end)
+                # print(start,end)
                 splits.append(data[start:end+1,:,:])
                 start = -1
                 end = -1
@@ -77,4 +77,4 @@ def split_and_save(filepath, alpha_threshold=0, min_length=0):
             splits[i][j].save(f'computed/{filepath.split('/')[-1].split('.')[0]}_{i}_{j}.png')    
             
 if __name__ == '__main__':
-    split_and_save('assets/player.png', 0, 0)
+    split_and_save('assets/bomb.png', 50, 20)

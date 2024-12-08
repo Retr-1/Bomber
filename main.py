@@ -67,6 +67,35 @@ class ManualAnimation:
         self.current_frame = self.frames[self.time // self.frame_length]
         
 
+class AnimationPlayer:
+    def __init__(self, frames, frame_length, canvas, canvas_x, canvas_y, func_on_end=None):
+        self.canvas:tk.Canvas = canvas
+        self.frames = frames
+        self.frame_length = frame_length
+        self.index = 0
+        self.canvas_reference = None
+        self.canvas_x = canvas_x
+        self.cavnas_y = canvas_y
+        self.func_on_end = func_on_end
+
+    def next_frame(self):
+        self.index += 1
+
+        if self.index >= len(self.frames):
+            if self.func_on_end:
+                self.func_on_end()
+            return
+        
+        self.canvas.itemconfigure(self.canvas_reference, image=self.frames[self.index])
+        self.canvas.after(self.frame_length, self.next_frame)
+
+    def play(self):
+        self.canvas_reference = self.canvas.create_image(self.canvas_x, self.cavnas_y, image=self.frames[self.index])
+        self.canvas.after(self.frame_length, self.next_frame)
+
+
+
+
 class Player:
     LOOKING_DOWN = 0
     LOOKING_UP = 1
@@ -270,6 +299,11 @@ class Game(Subprogram):
         self.board = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.canvas_references = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.barrel = load_sprite(blocksize, 'assets/barrel.png')
+        bomb_and_explosion = spritesheeter.split('assets/bomb.png', 50, 20)
+        bomb_and_explosion = bomb_and_explosion[0] + bomb_and_explosion[1]
+        bomb_and_explosion = list(map(ImageTk.PhotoImage, map(lambda x: resize_to_fit(x, self.blocksize+10, self.blocksize+10), bomb_and_explosion)))
+        self.bomb_frames = bomb_and_explosion[:4]
+        self.explosion_frames = bomb_and_explosion[4:]
 
 
     def redraw_block(self, x=None, y=None, canvas_x=None, canvas_y=None):
@@ -326,6 +360,17 @@ class Game(Subprogram):
 
     def drop_bomb(self, player):
         print('drop', player.canvas_x)
+        gridx,gridy = player.canvas_x//self.blocksize*self.blocksize + self.blocksize/2, player.canvas_y//self.blocksize*self.blocksize + self.blocksize/2
+        animation = AnimationPlayer(self.bomb_frames, 300, self.canvas, gridx, gridy, lambda: self.explode_bomb(animation.canvas_reference, player, gridx, gridy))
+        animation.play()
+
+    def explode_bomb(self, bomb_reference, placed_by, canvas_x, canvas_y):
+        print('exploding...', len(self.explosion_frames))
+        self.canvas.delete(bomb_reference)
+        # canvas_x, canvas_y = x*self.blocksize + self.blocksize/2, y*self.blocksize + self.blocksize/2
+        animation = AnimationPlayer(self.explosion_frames, 100, self.canvas, canvas_x, canvas_y, lambda: self.canvas.delete(animation.canvas_reference))
+        animation.play()
+
 
     def loop(self):
         for player in self.players:
