@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import constants
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw
 from tkinter.filedialog import asksaveasfile, askopenfile
 import spritesheeter
 import random
@@ -59,6 +59,64 @@ def tint_image(image, color):
     elif color == constants.YELLOW:
         b = Image.eval(b, lambda x: x*factor)
         return Image.merge('RGBA', (r,g,b,a))
+    
+def resize_with_padding(image, desired_size):
+    """
+    Resize an image to the desired size, maintaining the aspect ratio
+    and padding with zeros.
+    
+    Args:
+        image (PIL.Image.Image): The input image.
+        desired_size (tuple): The desired size as (width, height).
+
+    Returns:
+        PIL.Image.Image: The resized image with padding.
+    """
+    # Resize the image while maintaining the aspect ratio
+    image.thumbnail(desired_size)
+    
+    # Create a new blank image with the desired size and a black background
+    padded_image = Image.new("RGBA", desired_size, (0, 0, 0, 0))
+    
+    # Calculate the position to paste the resized image
+    paste_position = (
+        (desired_size[0] - image.width) // 2,
+        (desired_size[1] - image.height) // 2,
+    )
+    
+    # Paste the resized image onto the canvas
+    padded_image.paste(image, paste_position)
+    
+    return padded_image
+    
+def create_scalers(image, blocksize, topleft=0.7):
+    positive = resize_with_padding(image, (blocksize, blocksize))
+    negative = positive.copy()
+
+    a = (blocksize*topleft, blocksize*0.2)
+    b = (blocksize*(topleft-0.2), blocksize*.45)
+    c = (blocksize*(topleft+0.2), blocksize*.45)
+    d = (blocksize*(topleft-0.1), blocksize*.6)
+    e = (blocksize*(topleft+0.1), blocksize*.6)
+    f = (d[0], b[1])
+    g = (e[0], c[1])
+
+    draw = ImageDraw.Draw(positive)
+    draw.polygon((a,c,g,e,d,f,b), fill='green')
+
+    a = (blocksize*(topleft-0.1), blocksize*0.2)
+    b = (blocksize*(topleft+0.1), blocksize*0.2)
+    c = (blocksize*(topleft-0.2), blocksize*.35)
+    d = (blocksize*(topleft+0.2), blocksize*.35)
+    e = (blocksize*topleft, blocksize*.6)
+    f = (a[0] ,c[1])
+    g = (b[0], d[1])
+
+    draw = ImageDraw.Draw(negative)
+    draw.polygon((a,b,g,d,e,c,f), fill='red')
+
+    return (positive,negative)
+
 
 class ManualAnimation:
     def __init__(self, frames, frame_length):
@@ -135,8 +193,8 @@ class Player:
         
         self.speed = blocksize//8
         self.bomb_cooldown = 2 # seconds
-        self.bomb_speed = 100
-        self.bomb_range = 4
+        self.bomb_fuse = 100
+        self.bomb_radius = 4
 
         self.animation = None
         self.blocksize = blocksize
@@ -396,7 +454,7 @@ class Game(Subprogram):
 
         x,y = canvas_x//self.blocksize, canvas_y//self.blocksize
         for dx,dy in ((0,-1), (0,1), (-1,0), (1,0)):
-            for i in range(1, placed_by.bomb_range):
+            for i in range(1, placed_by.bomb_radius):
                 nx,ny = int(x+dx*i), int(y+dy*i)
 
                 if nx < 0 or nx >= self.n_blocks or ny < 0 or ny >= self.n_blocks or self.board[ny][nx] == constants.WALL:
@@ -548,7 +606,11 @@ class Program:
         self.level_editor.frame.pack()
 
 if __name__ == '__main__':
-    p = Program()
+    # p = Program()
+    # a,b = create_scalers(Image.open('assets/fuse.png'), 100, 0.2)
+    a,b = create_scalers(Image.open('assets/radius.png'), 100)
+    a.show()
+    b.show()
 
     # print(Player.SPRITESHEET)
     # Player.SPRITESHEET[0][0].show()
