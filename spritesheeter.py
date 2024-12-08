@@ -77,4 +77,7 @@ def split_and_save(filepath, alpha_threshold=0, min_length=0):
             splits[i][j].save(f'computed/{filepath.split('/')[-1].split('.')[0]}_{i}_{j}.png')    
             
 if __name__ == '__main__':
+    import os
+    for x in os.listdir('./computed'):
+        os.remove(f'./computed/{x}')
     split_and_save('assets/bomb.png', 50, 20)

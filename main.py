@@ -32,6 +32,13 @@ def load_sprite(blocksize, sprite_filepath):
     sprite = ImageTk.PhotoImage(image) 
     return sprite
 
+def load_and_flatten_spritesheet(blocksize, filepath, alpha_threshold=0, min_length=0):
+    split = spritesheeter.split(filepath, alpha_threshold, min_length)
+    s = []
+    for row in split:
+        s += row
+    return list(map(ImageTk.PhotoImage, map(lambda x: resize_to_fit(x, blocksize, blocksize), s)))
+
 def tint_image(image, color):
     r,g,b,a = image.split()
     factor = 0.6
@@ -299,11 +306,10 @@ class Game(Subprogram):
         self.board = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.canvas_references = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.barrel = load_sprite(blocksize, 'assets/barrel.png')
-        bomb_and_explosion = spritesheeter.split('assets/bomb.png', 50, 20)
-        bomb_and_explosion = bomb_and_explosion[0] + bomb_and_explosion[1]
-        bomb_and_explosion = list(map(ImageTk.PhotoImage, map(lambda x: resize_to_fit(x, self.blocksize+10, self.blocksize+10), bomb_and_explosion)))
+        bomb_and_explosion = load_and_flatten_spritesheet(self.blocksize+10, 'assets/bomb.png', 50, 20)
         self.bomb_frames = bomb_and_explosion[:4]
-        self.explosion_frames = bomb_and_explosion[4:]
+        self.explosion_frames = bomb_and_explosion[4:-1]
+        
 
 
     def redraw_block(self, x=None, y=None, canvas_x=None, canvas_y=None):
