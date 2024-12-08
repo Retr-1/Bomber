@@ -115,7 +115,7 @@ def create_scalers(image, blocksize, topleft=0.7):
     draw = ImageDraw.Draw(negative)
     draw.polygon((a,b,g,d,e,c,f), fill='red')
 
-    return (positive,negative)
+    return (ImageTk.PhotoImage(positive), ImageTk.PhotoImage(negative))
 
 
 class ManualAnimation:
@@ -277,10 +277,14 @@ class LevelEditor(Subprogram):
         self.canvas = tk.Canvas(master=self.frame, width=size, height=size)
         self.canvas.bind('<B1-Motion>', self.mouse_motion)
         self.canvas.bind('<Button-1>', lambda e: self.place_current(e.x, e.y))
-        self.canvas.bind_all('1', lambda e: self.placing_combo.current(0))
-        self.canvas.bind_all('2', lambda e: self.placing_combo.current(1))
-        self.canvas.bind_all('3', lambda e: self.placing_combo.current(2))
-        self.canvas.bind_all('4', lambda e: self.placing_combo.current(3))
+        # self.canvas.bind_all('1', lambda e: self.placing_combo.current(0))
+        # self.canvas.bind_all('2', lambda e: self.placing_combo.current(1))
+        # self.canvas.bind_all('3', lambda e: self.placing_combo.current(2))
+        # self.canvas.bind_all('4', lambda e: self.placing_combo.current(3))
+        for i in range(9):
+            self.canvas.bind_all(str(i+1), lambda e, i=i: self.placing_combo.current(i))
+        self.canvas.bind_all('0', lambda e: self.placing_combo.current(9))
+
         self.toolbar = tk.Frame(master=self.frame)
         self.load_btn = tk.Button(master=self.toolbar, text='Load Map', command=self.load)
         self.save_btn = tk.Button(master=self.toolbar, text='Save Map', command=self.save)
@@ -301,8 +305,15 @@ class LevelEditor(Subprogram):
 
         self.draw_grid()
 
-        self.barrel = load_sprite(blocksize, 'assets/barrel.png')
-        self.player = load_sprite(blocksize, 'assets/player_down_1.png')
+        self.sprites = dict()
+        self.sprites[constants.BARREL] = load_sprite(blocksize, 'assets/barrel.png')
+        self.sprites[constants.SPAWNPOINT] = load_sprite(blocksize, 'assets/player_down_1.png')
+        self.sprites[constants.SPEED_BUFF], self.sprites[constants.SPEED_DEBUFF] = create_scalers(Image.open('assets/speed.png'), self.blocksize)
+        self.sprites[constants.RADIUS_BUFF], self.sprites[constants.RADIUS_DEBUFF] = create_scalers(Image.open('assets/radius.png'), self.blocksize, 0.8)
+        self.sprites[constants.FUSE_BUFF], self.sprites[constants.FUSE_DEBUFF] = create_scalers(Image.open('assets/fuse.png'), self.blocksize, 0.2)
+        self.sprites[constants.COOLDOWN_BUFF], self.sprites[constants.COOLDOWN_DEBUFF] = create_scalers(Image.open('assets/cooldown.png'), self.blocksize, 0.8)
+        self.sprites[constants.SHIELD] = load_sprite(blocksize, 'assets/shield.png')
+
 
     def draw_grid(self):
         for y in range(0, self.size, self.blocksize):
@@ -334,11 +345,8 @@ class LevelEditor(Subprogram):
         if self.board[y][x] == constants.WALL:
             # print('wall', x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize)
             self.board_references[y][x] = self.canvas.create_rectangle(x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize, fill='black')
-        elif self.board[y][x] == constants.BARREL:
-            ID = self.canvas.create_image(x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, image=self.barrel)
-            self.board_references[y][x] = ID
-        elif self.board[y][x] == constants.SPAWNPOINT:
-            ID = self.canvas.create_image(x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, image=self.player)
+        elif self.board[y][x] in self.sprites:
+            ID = self.canvas.create_image(x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, image=self.sprites[self.board[y][x]])
             self.board_references[y][x] = ID
 
 
@@ -606,11 +614,11 @@ class Program:
         self.level_editor.frame.pack()
 
 if __name__ == '__main__':
-    # p = Program()
+    p = Program()
     # a,b = create_scalers(Image.open('assets/fuse.png'), 100, 0.2)
-    a,b = create_scalers(Image.open('assets/radius.png'), 100)
-    a.show()
-    b.show()
+    # a,b = create_scalers(Image.open('assets/radius.png'), 100)
+    # a.show()
+    # b.show()
 
     # print(Player.SPRITESHEET)
     # Player.SPRITESHEET[0][0].show()

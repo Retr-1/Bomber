@@ -2,8 +2,17 @@ AIR = 0
 WALL = 1
 BARREL = 2
 SPAWNPOINT = 3
+SPEED_BUFF = 4
+SPEED_DEBUFF = 5
+RADIUS_BUFF = 6
+RADIUS_DEBUFF = 7
+FUSE_BUFF = 8
+FUSE_DEBUFF = 9
+COOLDOWN_BUFF = 10
+COOLDOWN_DEBUFF = 11
+SHIELD = 12
 
-BLOCK_NAMES = ['air', 'wall', 'barrel', 'spawnpoint']
+BLOCK_NAMES = ['air', 'wall', 'barrel', 'spawnpoint', 'speed+', 'speed-', 'radius+', 'radius-', 'fuse+', 'fuse-', 'cooldown+', 'cooldown-', 'shield']
 BLOCK_VALUES = dict(zip(BLOCK_NAMES, range(len(BLOCK_NAMES))))
 
 RED = 0
