@@ -190,11 +190,13 @@ class Player:
         self.moving = 0
         self.dead = False
         self.time_of_last_bomb = 0
+        self.speed_to_frame_length_scaler = blocksize / 0.08
         
         self.speed = blocksize//8
         self.bomb_cooldown = 2 # seconds
         self.bomb_fuse = 100
         self.bomb_radius = 4
+        self.shielded = False
 
         self.animation = None
         self.blocksize = blocksize
@@ -219,7 +221,10 @@ class Player:
 
 
     def create_moving_animation(self):
-        FRAME_LENGTH = 100
+        FRAME_LENGTH =  int(self.speed_to_frame_length_scaler / self.speed)
+        print(FRAME_LENGTH, 'fr')
+        # frame_length = x / speed
+        # 100 = x / blocksize/800
         if self.moving & constants.MOVING_UP:
             return ManualAnimation(self.sprites[self.LOOKING_UP] + self.sprites[self.LOOKING_UP][-2:0:-1], FRAME_LENGTH*3//2)
         elif self.moving & constants.MOVING_DOWN:
@@ -391,12 +396,20 @@ class Game(Subprogram):
         self.canvas.pack()
         self.board = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.canvas_references = [[None]*self.n_blocks for i in range(self.n_blocks)]
-        self.barrel = load_sprite(blocksize, 'assets/barrel.png')
         bomb_and_explosion = load_and_flatten_spritesheet(self.blocksize+10, 'assets/bomb.png', 50, 20)
         self.bomb_frames = bomb_and_explosion[:4]
         self.explosion_frames = bomb_and_explosion[4:-1]
         # self.fire_frames = load_and_flatten_spritesheet(self.blocksize+10, 'assets/fire.png', 0, 40)
         # self.death_frames = load_and_flatten_spritesheet(self.blocksize+30, 'assets/death.png', 0, 40)
+
+        self.sprites = dict()
+        self.sprites[constants.BARREL] = load_sprite(blocksize, 'assets/barrel.png')
+        self.sprites[constants.SPAWNPOINT] = load_sprite(blocksize, 'assets/player_down_1.png')
+        self.sprites[constants.SPEED_BUFF], self.sprites[constants.SPEED_DEBUFF] = create_scalers(Image.open('assets/speed.png'), self.blocksize)
+        self.sprites[constants.RADIUS_BUFF], self.sprites[constants.RADIUS_DEBUFF] = create_scalers(Image.open('assets/radius.png'), self.blocksize, 0.8)
+        self.sprites[constants.FUSE_BUFF], self.sprites[constants.FUSE_DEBUFF] = create_scalers(Image.open('assets/fuse.png'), self.blocksize, 0.2)
+        self.sprites[constants.COOLDOWN_BUFF], self.sprites[constants.COOLDOWN_DEBUFF] = create_scalers(Image.open('assets/cooldown.png'), self.blocksize, 0.8)
+        self.sprites[constants.SHIELD] = load_sprite(blocksize, 'assets/shield.png')
 
 
     def redraw_block(self, x=None, y=None, canvas_x=None, canvas_y=None):
@@ -411,8 +424,8 @@ class Game(Subprogram):
         if self.board[y][x] == constants.WALL:
             # print('wall', x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize)
             self.canvas_references[y][x] = self.canvas.create_rectangle(x*self.blocksize, y*self.blocksize, x*self.blocksize+self.blocksize, y*self.blocksize+self.blocksize, fill='black')
-        elif self.board[y][x] == constants.BARREL:
-            ID = self.canvas.create_image(x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, image=self.barrel)
+        elif self.board[y][x] in self.sprites:
+            ID = self.canvas.create_image(x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, image=self.sprites[self.board[y][x]])
             self.canvas_references[y][x] = ID
 
     def initialize(self, n_humans, n_bots, game_map):
@@ -525,9 +538,9 @@ class Game(Subprogram):
 
                 x,y = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize
                 # print(x,y)
-                if x < 0 or x >= self.n_blocks or self.board[oldy][x] != constants.AIR:
+                if x < 0 or x >= self.n_blocks or self.board[oldy][x] in [constants.WALL, constants.BARREL]:
                     player.canvas_x -= move[0]
-                if y < 0 or y >= self.n_blocks or self.board[y][oldx] != constants.AIR:
+                if y < 0 or y >= self.n_blocks or self.board[y][oldx] in [constants.WALL, constants.BARREL]:
                     player.canvas_y -= move[1]
 
             if player.animation:
@@ -537,7 +550,34 @@ class Game(Subprogram):
                 # print(player.animation.time)
             
             self.canvas.coords(player.canvas_reference, player.canvas_x, player.canvas_y)
-            x,y = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize + 1
+            
+            x,y = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize
+            
+            match self.board[y][x]:
+                case constants.SPEED_BUFF:
+                    player.speed += 1
+                case constants.SPEED_DEBUFF:
+                    player.speed -= 1
+                case constants.RADIUS_BUFF:
+                    player.bomb_radius += 1
+                case constants.RADIUS_DEBUFF:
+                    player.bomb_radius -= 1
+                case constants.FUSE_BUFF:
+                    player.bomb_fuse -= 1
+                case constants.FUSE_DEBUFF:
+                    player.bomb_fuse += 1
+                case constants.COOLDOWN_BUFF:
+                    player.bomb_cooldown -= 0.2
+                case constants.COOLDOWN_DEBUFF:
+                    player.bomb_cooldown += 0.2
+                case constants.SHIELD:
+                    player.shielded = True
+
+            if constants.SHIELD >= self.board[y][x] >= constants.SPEED_BUFF:
+                self.board[y][x] = constants.AIR
+                self.redraw_block(x,y)
+
+            y += 1
             for x in range(x-1, x+2):
                 if 0 <= y < self.n_blocks and 0 <= x < self.n_blocks:
                     # self.redraw_block(x, y)
@@ -573,6 +613,9 @@ class LevelSelector(Subprogram):
         self.max_players = self.get_max_players(self.map_name.get())
         # print(self.max_players)
 
+    def refresh(self):
+        self.lvl_combox.configure(values=os.listdir('maps/'))
+
     def selection_changed(self, event):
         self.max_players = self.get_max_players(self.map_name.get())
         # print(self.max_players, event)
@@ -588,8 +631,8 @@ class Program:
         self.blocksize = 40
         
         self.menu_frame = tk.Frame(master=self.window)
-        self.menu_btn_play = tk.Button(master=self.menu_frame, text='Play', font='Helvetica 32', command=self.from_menu_to_level_select)
-        self.menu_btn_editor = tk.Button(master=self.menu_frame,text='Level Editor', font='Helvetica 32', command=self.from_menu_to_editor)
+        self.menu_btn_play = tk.Button(master=self.menu_frame, text='Play', font='Helvetica 26', command=self.from_menu_to_level_select)
+        self.menu_btn_editor = tk.Button(master=self.menu_frame,text='Level Editor', font='Helvetica 26', command=self.from_menu_to_editor)
 
         self.menu_btn_play.grid(row=0, column=0, sticky='nswe')
         self.menu_btn_editor.grid(row=1, column=0, sticky='nswe')
@@ -609,6 +652,7 @@ class Program:
 
     def from_menu_to_level_select(self):
         self.menu_frame.pack_forget()
+        self.level_selector.refresh()
         self.level_selector.frame.pack()
 
     def start_game(self):
