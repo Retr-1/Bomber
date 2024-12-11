@@ -192,7 +192,7 @@ class Player:
         self.time_of_last_bomb = 0
         self.speed_to_frame_length_scaler = blocksize / 0.08
         
-        self.speed = blocksize//8
+        self.speed = 1
         self.bomb_cooldown = 2 # seconds
         self.bomb_fuse = 100
         self.bomb_radius = 4
@@ -221,7 +221,7 @@ class Player:
 
 
     def create_moving_animation(self):
-        FRAME_LENGTH =  int(self.speed_to_frame_length_scaler / self.speed)
+        FRAME_LENGTH =  int(100/self.speed)
         print(FRAME_LENGTH, 'fr')
         # frame_length = x / speed
         # 100 = x / blocksize/800
@@ -529,7 +529,8 @@ class Game(Subprogram):
             value = (move[0]**2 + move[1]**2)**0.5
 
             if value != 0:
-                move = (int(move[0]/value*player.speed), int(move[1]/value*player.speed))
+                SCALE = self.blocksize/12*player.speed
+                move = (int(move[0]/value*SCALE), int(move[1]/value*SCALE))
 
                 oldx,oldy = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize
 
@@ -555,9 +556,9 @@ class Game(Subprogram):
             
             match self.board[y][x]:
                 case constants.SPEED_BUFF:
-                    player.speed += 1
+                    player.speed *= 1.2
                 case constants.SPEED_DEBUFF:
-                    player.speed -= 1
+                    player.speed /= 1.2
                 case constants.RADIUS_BUFF:
                     player.bomb_radius += 1
                 case constants.RADIUS_DEBUFF:
