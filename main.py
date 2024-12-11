@@ -195,7 +195,7 @@ class Player:
         self.speed = 1
         self.bomb_cooldown = 2 # seconds
         self.bomb_fuse = 100
-        self.bomb_radius = 4
+        self.bomb_radius = 3
         self.shielded = False
 
         self.animation = None
@@ -562,7 +562,7 @@ class Game(Subprogram):
                 case constants.RADIUS_BUFF:
                     player.bomb_radius += 1
                 case constants.RADIUS_DEBUFF:
-                    player.bomb_radius -= 1
+                    player.bomb_radius = max(player.bomb_radius-1, 1)
                 case constants.FUSE_BUFF:
                     player.bomb_fuse -= 1
                 case constants.FUSE_DEBUFF:
