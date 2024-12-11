@@ -134,10 +134,15 @@ class ManualAnimation:
         
 
 class AnimationPlayer:
-    def __init__(self, frames, frame_length, canvas, canvas_x, canvas_y, func_on_end=None, destroy_reference_on_end=False):
+    def __init__(self, frames, frame_length, canvas, canvas_x, canvas_y, func_on_end=None, destroy_reference_on_end=False, duration=None):
+
         self.canvas:tk.Canvas = canvas
         self.frames = frames
-        self.frame_length = frame_length
+        if not frame_length:
+            self.frame_length = int(duration/len(frames))
+            print(self.frame_length, 'fl')
+        else:
+            self.frame_length = frame_length
         self.index = 0
         self.canvas_reference = None
         self.canvas_x = canvas_x
@@ -194,7 +199,7 @@ class Player:
         
         self.speed = 1
         self.bomb_cooldown = 2 # seconds
-        self.bomb_fuse = 100
+        self.bomb_fuse = 1500 # ms
         self.bomb_radius = 3
         self.shielded = False
 
@@ -469,13 +474,13 @@ class Game(Subprogram):
             return
         
         player.time_of_last_bomb = time.time()
-        print('drop', player.canvas_x)
+        # print('drop', player.canvas_x)
         gridx,gridy = player.canvas_x//self.blocksize*self.blocksize + self.blocksize/2, player.canvas_y//self.blocksize*self.blocksize + self.blocksize/2
-        animation = AnimationPlayer(self.bomb_frames, 300, self.canvas, gridx, gridy, lambda: self.explode_bomb(player, gridx, gridy), True)
+        animation = AnimationPlayer(self.bomb_frames, None, self.canvas, gridx, gridy, lambda: self.explode_bomb(player, gridx, gridy), True, player.bomb_fuse)
         animation.play()
 
     def explode_bomb(self, placed_by:Player, canvas_x, canvas_y):
-        print('exploding...', len(self.explosion_frames))
+        # print('exploding...', len(self.explosion_frames))
 
         animation = AnimationPlayer(self.explosion_frames, 100, self.canvas, canvas_x, canvas_y, destroy_reference_on_end=True)
         animation.play()
@@ -564,9 +569,9 @@ class Game(Subprogram):
                 case constants.RADIUS_DEBUFF:
                     player.bomb_radius = max(player.bomb_radius-1, 1)
                 case constants.FUSE_BUFF:
-                    player.bomb_fuse -= 1
+                    player.bomb_fuse /= 1.2
                 case constants.FUSE_DEBUFF:
-                    player.bomb_fuse += 1
+                    player.bomb_fuse *= 1.2
                 case constants.COOLDOWN_BUFF:
                     player.bomb_cooldown -= 0.2
                 case constants.COOLDOWN_DEBUFF:
