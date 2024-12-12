@@ -200,7 +200,7 @@ class Player:
         self.speed = 1
         self.bomb_cooldown = 2 # seconds
         self.bomb_fuse = 1500 # ms
-        self.bomb_radius = 3
+        self.bomb_radius = 3 # tiles
         self.shielded = False
 
         self.animation = None
@@ -227,7 +227,7 @@ class Player:
 
     def create_moving_animation(self):
         FRAME_LENGTH =  int(100/self.speed)
-        print(FRAME_LENGTH, 'fr')
+        # print(FRAME_LENGTH, 'fr')
         # frame_length = x / speed
         # 100 = x / blocksize/800
         if self.moving & constants.MOVING_UP:
@@ -472,7 +472,7 @@ class Game(Subprogram):
     def drop_bomb(self, player:Player):
         if player.dead or time.time() - player.time_of_last_bomb < player.bomb_cooldown:
             return
-        
+        print(time.time())
         player.time_of_last_bomb = time.time()
         # print('drop', player.canvas_x)
         gridx,gridy = player.canvas_x//self.blocksize*self.blocksize + self.blocksize/2, player.canvas_y//self.blocksize*self.blocksize + self.blocksize/2
@@ -488,6 +488,12 @@ class Game(Subprogram):
         # fire_animation.play()
 
         x,y = canvas_x//self.blocksize, canvas_y//self.blocksize
+
+        for player in self.players:
+            px,py = player.canvas_x//self.blocksize, player.canvas_y//self.blocksize
+            if px == x and py == y:
+                self.hit(player)
+
         for dx,dy in ((0,-1), (0,1), (-1,0), (1,0)):
             for i in range(1, placed_by.bomb_radius):
                 nx,ny = int(x+dx*i), int(y+dy*i)
@@ -573,9 +579,9 @@ class Game(Subprogram):
                 case constants.FUSE_DEBUFF:
                     player.bomb_fuse *= 1.2
                 case constants.COOLDOWN_BUFF:
-                    player.bomb_cooldown -= 0.2
+                    player.bomb_cooldown /= 1.4
                 case constants.COOLDOWN_DEBUFF:
-                    player.bomb_cooldown += 0.2
+                    player.bomb_cooldown *= 1.4
                 case constants.SHIELD:
                     player.shielded = True
 
