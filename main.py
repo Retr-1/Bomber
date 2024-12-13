@@ -219,6 +219,7 @@ class Player:
         self._images_pil = [ [convert(image) for image in row ] for row in self.SPRITESHEET ]
         self.sprites = [ [ImageTk.PhotoImage(image) for image in row] for row in self._images_pil ]
         self.sprites.append( [ ImageTk.PhotoImage(image.transpose(Image.FLIP_LEFT_RIGHT)) for image in self._images_pil[2]] )
+        self.color = color
         self.canvas_reference = None
         self.shield_canvas_reference = None
         self.canvas:tk.Canvas = canvas
@@ -440,6 +441,7 @@ class Game(Subprogram):
         self.explosion_frames = bomb_and_explosion[4:-1]
         self.player_shield_frames = load_gif('assets/shield_equipped.gif', blocksize+25, blocksize+25)
         print(self.player_shield_frames)
+        self.shadow = ImageTk.PhotoImage(Image.new('RGBA', (self.size, self.size), (0,0,0,120)))
         # self.fire_frames = load_and_flatten_spritesheet(self.blocksize+10, 'assets/fire.png', 0, 40)
         # self.death_frames = load_and_flatten_spritesheet(self.blocksize+30, 'assets/death.png', 0, 40)
 
@@ -563,10 +565,12 @@ class Game(Subprogram):
         # AnimationPlayer(self.death_frames, 100, self.canvas, player.canvas_x, player.canvas_y, destroy_reference_on_end=True).play()
 
     def loop(self):
+        n_alive = 0
         for player in self.players:
             if player.dead:
                 continue
 
+            n_alive += 1
             player:Player
 
             move = [0,0]
@@ -648,7 +652,26 @@ class Game(Subprogram):
                     if self.canvas_references[y][x]:
                         self.canvas.tag_raise(self.canvas_references[y][x])
 
-        self.canvas.after(16, self.loop)
+        if n_alive < 2:
+            self.endgame(n_alive)
+        else:
+            self.canvas.after(16, self.loop)
+
+    def endgame(self, n_alive):
+        self.canvas.create_image(0, 0, anchor='nw', image=self.shadow)
+        FONT = 'Helvetica 40'
+
+        if n_alive == 0:
+            self.canvas.create_text(self.size/2, self.size/2, text='DRAW', anchor='center', font=FONT)
+        else:
+            alive = None
+            for player in self.players:
+                player: Player
+                if not player.dead:
+                    alive = player
+                    break
+
+            self.canvas.create_text(self.size/2, self.size/2, text=f'{constants.COLOR_NAMES[player.color]} wins!!!', fill=constants.COLOR_NAMES[player.color], anchor='center', font=FONT)
 
                 
 
