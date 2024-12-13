@@ -7,6 +7,7 @@ import spritesheeter
 import random
 import os
 import time
+import numpy as np
 
 def resize(image, width, height):
     if width is None and height is None:
@@ -32,6 +33,37 @@ def load_sprite(blocksize, sprite_filepath):
     image = resize_to_fit(Image.open(sprite_filepath), blocksize, blocksize)
     sprite = ImageTk.PhotoImage(image) 
     return sprite
+
+def load_gif(filepath, width, height):
+    gif = Image.open(filepath)
+    i = 0
+    frames = []
+    while True:
+        try:
+            gif.seek(i)
+            image = resize_to_fit(gif.convert('RGBA'), width, height)
+            # image: Image
+            pixels = np.array(image)
+            # print(pixels.shape)
+            for y in range(image.height):
+                for x in range(image.width):
+                    # print(pixels[x,y,0:3])
+                    if sum(pixels[x,y,0:3]) < 100:
+                        pixels[y,x] = [0,0,0,0]
+                    else:
+                        new_pixel = pixels[y,x]
+                        new_pixel[3] = 150
+                        pixels[y,x] = new_pixel
+            # print('end')
+            image = Image.fromarray(pixels, 'RGBA')
+            # image.show()
+            frames.append(ImageTk.PhotoImage(image))
+            i += 1
+        except Exception as e:
+            print(e)
+            break
+    return frames
+
 
 def load_and_flatten_spritesheet(blocksize, filepath, alpha_threshold=0, min_length=0):
     split = spritesheeter.split(filepath, alpha_threshold, min_length)
@@ -188,6 +220,7 @@ class Player:
         self.sprites = [ [ImageTk.PhotoImage(image) for image in row] for row in self._images_pil ]
         self.sprites.append( [ ImageTk.PhotoImage(image.transpose(Image.FLIP_LEFT_RIGHT)) for image in self._images_pil[2]] )
         self.canvas_reference = None
+        self.shield_canvas_reference = None
         self.canvas:tk.Canvas = canvas
         self.bot = bot
         self.canvas_x = canvas_x
@@ -204,6 +237,7 @@ class Player:
         self.shielded = False
 
         self.animation = None
+        self.shield_animation = None
         self.blocksize = blocksize
 
     def start_moving(self, direction):
@@ -404,6 +438,8 @@ class Game(Subprogram):
         bomb_and_explosion = load_and_flatten_spritesheet(self.blocksize+10, 'assets/bomb.png', 50, 20)
         self.bomb_frames = bomb_and_explosion[:4]
         self.explosion_frames = bomb_and_explosion[4:-1]
+        self.player_shield_frames = load_gif('assets/shield_equipped.gif', blocksize+25, blocksize+25)
+        print(self.player_shield_frames)
         # self.fire_frames = load_and_flatten_spritesheet(self.blocksize+10, 'assets/fire.png', 0, 40)
         # self.death_frames = load_and_flatten_spritesheet(self.blocksize+30, 'assets/death.png', 0, 40)
 
@@ -515,9 +551,15 @@ class Game(Subprogram):
                 animation.play()
 
     def hit(self, player:Player):
-        player.dead = True
-        self.canvas.delete(player.canvas_reference)
-        player.canvas_reference = None
+        if player.shielded:
+            player.shielded = False
+            player.shield_animation = None
+            self.canvas.delete(player.shield_canvas_reference)
+        else:
+            player.dead = True
+            self.canvas.delete(player.canvas_reference)
+            player.canvas_reference = None
+        
         # AnimationPlayer(self.death_frames, 100, self.canvas, player.canvas_x, player.canvas_y, destroy_reference_on_end=True).play()
 
     def loop(self):
@@ -559,9 +601,16 @@ class Game(Subprogram):
                 player.animation.step(16)
                 self.canvas.itemconfigure(player.canvas_reference, image=player.animation.current_frame)
                 self.canvas.tag_raise(player.canvas_reference)
+
+                if player.shield_animation:
+                    player.shield_animation.step(16)
+                    self.canvas.itemconfigure(player.shield_canvas_reference, image=player.shield_animation.current_frame)
+                    self.canvas.tag_raise(player.shield_canvas_reference)
+
                 # print(player.animation.time)
             
             self.canvas.coords(player.canvas_reference, player.canvas_x, player.canvas_y)
+            self.canvas.coords(player.shield_canvas_reference, player.canvas_x, player.canvas_y)
             
             x,y = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize
             
@@ -583,7 +632,10 @@ class Game(Subprogram):
                 case constants.COOLDOWN_DEBUFF:
                     player.bomb_cooldown *= 1.4
                 case constants.SHIELD:
-                    player.shielded = True
+                    if not player.shielded:
+                        player.shielded = True
+                        player.shield_animation = ManualAnimation(self.player_shield_frames, 200)
+                        player.shield_canvas_reference = self.canvas.create_image(player.canvas_x, player.canvas_y, image=self.player_shield_frames[0])
 
             if constants.SHIELD >= self.board[y][x] >= constants.SPEED_BUFF:
                 self.board[y][x] = constants.AIR
