@@ -200,6 +200,45 @@ class AnimationPlayer:
         self.canvas.after(self.frame_length, self.next_frame)
 
 
+class CanvasButton:
+    def __init__(self, x1, y1, x2, y2, canvas, color, text='', command=lambda: None):
+        self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
+        self.canvas: tk.Canvas = canvas
+        self.color = color
+        self.text = text
+        self.command = command
+
+        self.rect_reference = None
+        self.text_reference = None
+
+        self.hovered = False
+
+
+    def click(self, event):
+        if self.x2 >= event.x >= self.x1 and self.y2 >= event.y >= self.y1:
+            self.command()
+
+    def place(self):
+        self.rect_reference = self.canvas.create_rectangle(self.x1, self.y1, self.x2, self.y2, outline=self.color)
+        self.text_reference = self.canvas.create_text((self.x1+self.x2)/2, (self.y1+self.y2)/2, text=self.text, fill=self.color)
+
+    def hover(self, event):
+        if self.x2 >= event.x >= self.x1 and self.y2 >= event.y >= self.y1:
+            if not self.hovered:
+                # print('inside')
+                self.hovered = True
+                self.canvas.itemconfigure(self.rect_reference, fill=self.color)
+                self.canvas.itemconfigure(self.text_reference, fill='white')
+        elif self.hovered:
+            self.hovered = False
+            print('outside')
+            self.canvas.itemconfigure(self.rect_reference, fill='')
+            self.canvas.itemconfigure(self.text_reference, fill=self.color)
+
+    def destroy(self):
+        self.canvas.delete(self.rect_reference)
+        self.canvas.delete(self.text_reference)
+                
 
 
 class Player:
@@ -442,6 +481,14 @@ class Game(Subprogram):
         self.player_shield_frames = load_gif('assets/shield_equipped.gif', blocksize+25, blocksize+25)
         print(self.player_shield_frames)
         self.shadow = ImageTk.PhotoImage(Image.new('RGBA', (self.size, self.size), (0,0,0,120)))
+
+        self.play_again_btn = CanvasButton(size/2-size/4, size/2 + 30, size/2-10, size/2 + 100, self.canvas, 'RED', 'Play Again', lambda: self.play_again_btn.destroy())
+        self.menu_btn = CanvasButton(size/2+10, size/2 + 30, size/2+10+size/4, size/2 + 100, self.canvas, 'RED', 'Back to Menu', lambda: print('YESS!!'))
+        self.play_again_btn.place()
+        self.menu_btn.place()
+        
+        self.canvas.bind('<Button-1>', self._mouse1)
+        self.canvas.bind('<Motion>', self._mousemove)
         # self.fire_frames = load_and_flatten_spritesheet(self.blocksize+10, 'assets/fire.png', 0, 40)
         # self.death_frames = load_and_flatten_spritesheet(self.blocksize+30, 'assets/death.png', 0, 40)
 
@@ -454,6 +501,13 @@ class Game(Subprogram):
         self.sprites[constants.COOLDOWN_BUFF], self.sprites[constants.COOLDOWN_DEBUFF] = create_scalers(Image.open('assets/cooldown.png'), self.blocksize, 0.8)
         self.sprites[constants.SHIELD] = load_sprite(blocksize, 'assets/shield.png')
 
+    def _mouse1(self, event):
+        self.play_again_btn.click(event)
+        self.menu_btn.click(event)
+
+    def _mousemove(self, event):
+        self.play_again_btn.hover(event)
+        self.menu_btn.hover(event)
 
     def redraw_block(self, x=None, y=None, canvas_x=None, canvas_y=None):
         if x == None:
