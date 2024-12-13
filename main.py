@@ -225,20 +225,27 @@ class CanvasButton:
     def hover(self, event):
         if self.x2 >= event.x >= self.x1 and self.y2 >= event.y >= self.y1:
             if not self.hovered:
-                # print('inside')
                 self.hovered = True
                 self.canvas.itemconfigure(self.rect_reference, fill=self.color)
-                self.canvas.itemconfigure(self.text_reference, fill='white')
+                self.canvas.itemconfigure(self.text_reference, fill='black' if self.color=='white' else 'white')
         elif self.hovered:
             self.hovered = False
-            print('outside')
             self.canvas.itemconfigure(self.rect_reference, fill='')
             self.canvas.itemconfigure(self.text_reference, fill=self.color)
 
     def destroy(self):
         self.canvas.delete(self.rect_reference)
         self.canvas.delete(self.text_reference)
-                
+
+    def set_color(self, color):
+        self.color = color
+
+        if self.hovered:
+            self.canvas.itemconfigure(self.rect_reference, fill=self.color)
+            self.canvas.itemconfigure(self.text_reference, fill='black' if self.color=='white' else 'white')
+        else:
+            self.canvas.itemconfigure(self.rect_reference, fill='')
+            self.canvas.itemconfigure(self.text_reference, fill=self.color)
 
 
 class Player:
@@ -484,8 +491,6 @@ class Game(Subprogram):
 
         self.play_again_btn = CanvasButton(size/2-size/4, size/2 + 30, size/2-10, size/2 + 100, self.canvas, 'RED', 'Play Again', lambda: self.play_again_btn.destroy())
         self.menu_btn = CanvasButton(size/2+10, size/2 + 30, size/2+10+size/4, size/2 + 100, self.canvas, 'RED', 'Back to Menu', lambda: print('YESS!!'))
-        self.play_again_btn.place()
-        self.menu_btn.place()
         
         self.canvas.bind('<Button-1>', self._mouse1)
         self.canvas.bind('<Motion>', self._mousemove)
@@ -716,7 +721,8 @@ class Game(Subprogram):
         FONT = 'Helvetica 40'
 
         if n_alive == 0:
-            self.canvas.create_text(self.size/2, self.size/2, text='DRAW', anchor='center', font=FONT)
+            text = 'Tie'
+            color = 'white'
         else:
             alive = None
             for player in self.players:
@@ -724,8 +730,15 @@ class Game(Subprogram):
                 if not player.dead:
                     alive = player
                     break
+            text = f'{constants.COLOR_NAMES[player.color].capitalize()} wins!!!'
+            color = constants.COLOR_NAMES[player.color]
 
-            self.canvas.create_text(self.size/2, self.size/2, text=f'{constants.COLOR_NAMES[player.color]} wins!!!', fill=constants.COLOR_NAMES[player.color], anchor='center', font=FONT)
+        self.canvas.create_text(self.size/2, self.size/2-30, text=text, fill=color, anchor='center', font=FONT)
+        self.play_again_btn.set_color(color)
+        self.menu_btn.set_color(color)
+        self.play_again_btn.place()
+        self.menu_btn.place()
+            
 
                 
 

@@ -20,7 +20,7 @@ GREEN = 1
 BLUE = 2
 YELLOW = 3
 
-COLOR_NAMES = ['RED', 'GREEN', 'BLUE', 'YELLOW']
+COLOR_NAMES = ['red','green','blue','yellow']
 
 MOVING_UP = 1
 MOVING_DOWN = 0b10
