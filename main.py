@@ -527,6 +527,7 @@ class Game(Subprogram):
         self.board = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.canvas_references = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.game_map = None
+        self.gameover = False
         self.players = []
         self.func_back_to_menu = func_back_to_menu
         bomb_and_explosion = load_and_flatten_spritesheet(self.blocksize+10, 'assets/bomb.png', 50, 20)
@@ -598,6 +599,7 @@ class Game(Subprogram):
         self.n_humans = n_humans
         self.n_bots = n_bots
         self.game_map = game_map
+        self.gameover = False
         
         with open('./maps/' + game_map, 'r') as f:
             self.board = [[int(itm) for itm in line.split()] for line in f]
@@ -631,7 +633,7 @@ class Game(Subprogram):
             player.draw()
 
     def drop_bomb(self, player:Player):
-        if player.dead or time.time() - player.time_of_last_bomb < player.bomb_cooldown:
+        if player.dead or time.time() - player.time_of_last_bomb < player.bomb_cooldown or self.gameover:
             return
         # print(time.time())
         player.time_of_last_bomb = time.time()
@@ -809,6 +811,7 @@ class Game(Subprogram):
             clean()
             self.func_back_to_menu()
 
+        self.gameover = True
         shadow_reference = self.canvas.create_image(0, 0, anchor='nw', image=self.shadow)
         FONT = 'Helvetica 40'
 
