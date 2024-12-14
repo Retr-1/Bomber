@@ -485,7 +485,7 @@ class LevelEditor(Subprogram):
 
 
 class Game(Subprogram):
-    def __init__(self, master, size, blocksize):
+    def __init__(self, master, size, blocksize, func_back_to_menu=lambda: None):
         super().__init__(master)
         self.size = size
         self.blocksize = blocksize
@@ -496,6 +496,7 @@ class Game(Subprogram):
         self.canvas_references = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.game_map = None
         self.players = []
+        self.func_back_to_menu = func_back_to_menu
         bomb_and_explosion = load_and_flatten_spritesheet(self.blocksize+10, 'assets/bomb.png', 50, 20)
         self.bomb_frames = bomb_and_explosion[:4]
         self.explosion_frames = bomb_and_explosion[4:-1]
@@ -504,7 +505,7 @@ class Game(Subprogram):
         self.shadow = ImageTk.PhotoImage(Image.new('RGBA', (self.size, self.size), (0,0,0,120)))
 
         self.play_again_btn = CanvasButton(size/2-size/4, size/2 + 30, size/2-10, size/2 + 100, self.canvas, 'RED', 'Play Again')
-        self.menu_btn = CanvasButton(size/2+10, size/2 + 30, size/2+10+size/4, size/2 + 100, self.canvas, 'RED', 'Back to Menu', lambda: print('YESS!!'))
+        self.menu_btn = CanvasButton(size/2+10, size/2 + 30, size/2+10+size/4, size/2 + 100, self.canvas, 'RED', 'Back to Menu')
         
         self.canvas.bind('<Button-1>', self._mouse1)
         self.canvas.bind('<Motion>', self._mousemove)
@@ -713,7 +714,7 @@ class Game(Subprogram):
                 case constants.SHIELD:
                     if not player.shielded:
                         player.shielded = True
-                        player.shield_animation = ManualAnimation(self.player_shield_frames, 200)
+                        player.shield_animation = ManualAnimation(self.player_shield_frames, 150)
                         player.shield_canvas_reference = self.canvas.create_image(player.canvas_x, player.canvas_y, image=self.player_shield_frames[0])
 
             if constants.SHIELD >= self.board[y][x] >= constants.SPEED_BUFF:
@@ -733,7 +734,7 @@ class Game(Subprogram):
             self.canvas.after(16, self.loop)
 
     def endgame(self, n_alive):
-        def restart():
+        def clean():
             self.canvas.delete(shadow_reference)
             self.canvas.delete(text_reference)
             self.play_again_btn.destroy()
@@ -745,9 +746,16 @@ class Game(Subprogram):
                 if player.shield_canvas_reference:
                     self.canvas.delete(player.shield_canvas_reference)
             self.players.clear()
+
+        def restart():
+            clean()
             self.initialize(self.n_humans, self.n_bots, self.game_map)
             print('calling loop')
             self.loop()
+
+        def back_to_menu():
+            clean()
+            self.func_back_to_menu()
 
         shadow_reference = self.canvas.create_image(0, 0, anchor='nw', image=self.shadow)
         FONT = 'Helvetica 40'
@@ -768,6 +776,7 @@ class Game(Subprogram):
         text_reference = self.canvas.create_text(self.size/2, self.size/2-30, text=text, fill=color, anchor='center', font=FONT)
         self.play_again_btn.set_color(color)
         self.play_again_btn.command = restart
+        self.menu_btn.command = back_to_menu
         self.menu_btn.set_color(color)
         self.play_again_btn.place()
         self.menu_btn.place()
@@ -829,8 +838,12 @@ class Program:
 
         self.level_editor = LevelEditor(self.window, self.size, self.blocksize, self.from_editor_to_menu)
 
-        self.game = Game(self.window, self.size, self.blocksize)
+        self.game = Game(self.window, self.size, self.blocksize, self.from_game_to_menu)
 
+        self.menu_frame.pack()
+
+    def from_game_to_menu(self):
+        self.game.frame.pack_forget()
         self.menu_frame.pack()
 
     def from_editor_to_menu(self):
