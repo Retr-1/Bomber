@@ -172,7 +172,7 @@ class AnimationPlayer:
         self.frames = frames
         if not frame_length:
             self.frame_length = int(duration/len(frames))
-            print(self.frame_length, 'fl')
+            # print(self.frame_length, 'fl')
         else:
             self.frame_length = frame_length
         self.index = 0
@@ -212,17 +212,22 @@ class CanvasButton:
         self.text_reference = None
 
         self.hovered = False
+        self.placed = False
 
 
     def click(self, event):
-        if self.x2 >= event.x >= self.x1 and self.y2 >= event.y >= self.y1:
+        if self.placed and self.x2 >= event.x >= self.x1 and self.y2 >= event.y >= self.y1:
             self.command()
 
     def place(self):
+        self.placed = True
         self.rect_reference = self.canvas.create_rectangle(self.x1, self.y1, self.x2, self.y2, outline=self.color)
         self.text_reference = self.canvas.create_text((self.x1+self.x2)/2, (self.y1+self.y2)/2, text=self.text, fill=self.color)
 
     def hover(self, event):
+        if not self.placed:
+            return
+        
         if self.x2 >= event.x >= self.x1 and self.y2 >= event.y >= self.y1:
             if not self.hovered:
                 self.hovered = True
@@ -234,11 +239,18 @@ class CanvasButton:
             self.canvas.itemconfigure(self.text_reference, fill=self.color)
 
     def destroy(self):
+        self.hovered = False
+        self.placed = False
         self.canvas.delete(self.rect_reference)
         self.canvas.delete(self.text_reference)
+        self.rect_reference = None
+        self.text_reference = None
 
     def set_color(self, color):
         self.color = color
+
+        if not self.placed:
+            return
 
         if self.hovered:
             self.canvas.itemconfigure(self.rect_reference, fill=self.color)
@@ -288,7 +300,7 @@ class Player:
         self.blocksize = blocksize
 
     def start_moving(self, direction):
-        # print(self.canvas_x, direction, 's')
+        # print(self.canvas_x, direction, 's', self.dead)
         if not self.moving & (1<<direction):
             self.moving |= (1<<direction)
             self.animation = self.create_moving_animation()
@@ -482,14 +494,16 @@ class Game(Subprogram):
         self.canvas.pack()
         self.board = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.canvas_references = [[None]*self.n_blocks for i in range(self.n_blocks)]
+        self.game_map = None
+        self.players = []
         bomb_and_explosion = load_and_flatten_spritesheet(self.blocksize+10, 'assets/bomb.png', 50, 20)
         self.bomb_frames = bomb_and_explosion[:4]
         self.explosion_frames = bomb_and_explosion[4:-1]
         self.player_shield_frames = load_gif('assets/shield_equipped.gif', blocksize+25, blocksize+25)
-        print(self.player_shield_frames)
+        # print(self.player_shield_frames)
         self.shadow = ImageTk.PhotoImage(Image.new('RGBA', (self.size, self.size), (0,0,0,120)))
 
-        self.play_again_btn = CanvasButton(size/2-size/4, size/2 + 30, size/2-10, size/2 + 100, self.canvas, 'RED', 'Play Again', lambda: self.play_again_btn.destroy())
+        self.play_again_btn = CanvasButton(size/2-size/4, size/2 + 30, size/2-10, size/2 + 100, self.canvas, 'RED', 'Play Again')
         self.menu_btn = CanvasButton(size/2+10, size/2 + 30, size/2+10+size/4, size/2 + 100, self.canvas, 'RED', 'Back to Menu', lambda: print('YESS!!'))
         
         self.canvas.bind('<Button-1>', self._mouse1)
@@ -533,6 +547,7 @@ class Game(Subprogram):
     def initialize(self, n_humans, n_bots, game_map):
         self.n_humans = n_humans
         self.n_bots = n_bots
+        self.game_map = game_map
         
         with open('./maps/' + game_map, 'r') as f:
             self.board = [[int(itm) for itm in line.split()] for line in f]
@@ -550,7 +565,6 @@ class Game(Subprogram):
 
         # (UP,DOWN,LEFT,RIGHT,BOMB)
         BINDS = (('w','s','a','d','q'), ("Up", "Down", "Left", "Right", '/'))
-        self.players = []
         for i in range(n_humans):
             x,y = spawnpoints[i]
             self.players.append(Player(self.blocksize, i, False, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas))
@@ -569,7 +583,7 @@ class Game(Subprogram):
     def drop_bomb(self, player:Player):
         if player.dead or time.time() - player.time_of_last_bomb < player.bomb_cooldown:
             return
-        print(time.time())
+        # print(time.time())
         player.time_of_last_bomb = time.time()
         # print('drop', player.canvas_x)
         gridx,gridy = player.canvas_x//self.blocksize*self.blocksize + self.blocksize/2, player.canvas_y//self.blocksize*self.blocksize + self.blocksize/2
@@ -616,6 +630,7 @@ class Game(Subprogram):
             player.shielded = False
             player.shield_animation = None
             self.canvas.delete(player.shield_canvas_reference)
+            player.shield_canvas_reference = None
         else:
             player.dead = True
             self.canvas.delete(player.canvas_reference)
@@ -671,9 +686,10 @@ class Game(Subprogram):
                     self.canvas.tag_raise(player.shield_canvas_reference)
 
                 # print(player.animation.time)
-            
+            # print(player.shield_canvas_reference, player.canvas_x, player.canvas_y)
             self.canvas.coords(player.canvas_reference, player.canvas_x, player.canvas_y)
-            self.canvas.coords(player.shield_canvas_reference, player.canvas_x, player.canvas_y)
+            if player.shield_canvas_reference != None:
+                self.canvas.coords(player.shield_canvas_reference, player.canvas_x, player.canvas_y)
             
             x,y = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize
             
@@ -717,7 +733,23 @@ class Game(Subprogram):
             self.canvas.after(16, self.loop)
 
     def endgame(self, n_alive):
-        self.canvas.create_image(0, 0, anchor='nw', image=self.shadow)
+        def restart():
+            self.canvas.delete(shadow_reference)
+            self.canvas.delete(text_reference)
+            self.play_again_btn.destroy()
+            self.menu_btn.destroy()
+            for player in self.players:
+                player:Player
+                if player.canvas_reference:
+                    self.canvas.delete(player.canvas_reference)
+                if player.shield_canvas_reference:
+                    self.canvas.delete(player.shield_canvas_reference)
+            self.players.clear()
+            self.initialize(self.n_humans, self.n_bots, self.game_map)
+            print('calling loop')
+            self.loop()
+
+        shadow_reference = self.canvas.create_image(0, 0, anchor='nw', image=self.shadow)
         FONT = 'Helvetica 40'
 
         if n_alive == 0:
@@ -733,8 +765,9 @@ class Game(Subprogram):
             text = f'{constants.COLOR_NAMES[player.color].capitalize()} wins!!!'
             color = constants.COLOR_NAMES[player.color]
 
-        self.canvas.create_text(self.size/2, self.size/2-30, text=text, fill=color, anchor='center', font=FONT)
+        text_reference = self.canvas.create_text(self.size/2, self.size/2-30, text=text, fill=color, anchor='center', font=FONT)
         self.play_again_btn.set_color(color)
+        self.play_again_btn.command = restart
         self.menu_btn.set_color(color)
         self.play_again_btn.place()
         self.menu_btn.place()
