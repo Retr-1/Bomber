@@ -559,13 +559,13 @@ class Game(Subprogram):
                 if self.board[y][x] == constants.SPAWNPOINT:
                     spawnpoints.append((x,y))
                     self.board[y][x] = constants.AIR
-                else:
-                    self.redraw_block(x,y)
+                
+                self.redraw_block(x,y)
 
         random.shuffle(spawnpoints)
 
         # (UP,DOWN,LEFT,RIGHT,BOMB)
-        BINDS = (('w','s','a','d','q'), ("Up", "Down", "Left", "Right", '/'))
+        BINDS = (('w','s','a','d','q'), ("Up", "Down", "Left", "Right", '/'), ('i','k','j','l','u'), ('t','g','f','h','r'))
         for i in range(n_humans):
             x,y = spawnpoints[i]
             self.players.append(Player(self.blocksize, i, False, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas))
