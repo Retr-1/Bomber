@@ -109,9 +109,6 @@ def tint_image(image, color):
         return Image.merge('RGBA', (r,g,b,a))
     
     return image
-
-
-
     
 def resize_with_padding(image, desired_size):
     """
@@ -170,6 +167,14 @@ def create_scalers(image, blocksize, topleft=0.7):
 
     return (ImageTk.PhotoImage(positive), ImageTk.PhotoImage(negative))
 
+def randchoice(items, probabilities):
+    s = 0
+    c = random.random()
+    for i in range(len(items)):
+        s += probabilities[i]
+        if s >= c:
+            return items[i]
+        
 
 class ManualAnimation:
     def __init__(self, frames, frame_length):
@@ -548,6 +553,23 @@ class Game(Subprogram):
         self.sprites[constants.COOLDOWN_BUFF], self.sprites[constants.COOLDOWN_DEBUFF] = create_scalers(Image.open('assets/cooldown.png'), self.blocksize, 0.8)
         self.sprites[constants.SHIELD] = load_sprite(blocksize, 'assets/shield.png')
 
+        self.trinket_probabilities = [0]*9
+        tp = self.trinket_probabilities
+        tp[constants.SPEED_BUFF-4] =  10
+        tp[constants.SPEED_DEBUFF-4] = 10
+        tp[constants.FUSE_BUFF-4] = 8
+        tp[constants.FUSE_DEBUFF-4] = 8
+        tp[constants.COOLDOWN_BUFF-4] = 6
+        tp[constants.COOLDOWN_DEBUFF-4] = 6
+        tp[constants.RADIUS_BUFF-4] = 4
+        tp[constants.RADIUS_DEBUFF-4] = 4
+        tp[constants.SHIELD-4] = 5
+        s = sum(tp)
+        for i in range(len(tp)):
+            tp[i] /= s
+        print(self.trinket_probabilities)
+
+
     def _mouse1(self, event):
         self.play_again_btn.click(event)
         self.menu_btn.click(event)
@@ -641,9 +663,12 @@ class Game(Subprogram):
                     break
 
                 if self.board[ny][nx] == constants.BARREL:
-                    self.board[ny][nx] = constants.AIR
-                    self.canvas.delete(self.canvas_references[ny][nx])
-                    self.canvas_references[ny][nx] = None
+                    if random.random() < 0.5:
+                        self.board[ny][nx] = randchoice(list(range(4,13)), self.trinket_probabilities)
+                    else:
+                        self.board[ny][nx] = constants.AIR
+
+                    self.redraw_block(nx, ny)
 
                 for player in self.players:
                     px,py = player.canvas_x//self.blocksize, player.canvas_y//self.blocksize
