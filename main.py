@@ -74,7 +74,7 @@ def load_and_flatten_spritesheet(blocksize, filepath, alpha_threshold=0, min_len
 
 def tint_image(image, color):
     r,g,b,a = image.split()
-    factor = 0.6
+    factor = 0.4
     
     if color == constants.RED:
         g = Image.eval(g, lambda x: x*factor)
@@ -91,6 +91,27 @@ def tint_image(image, color):
     elif color == constants.YELLOW:
         b = Image.eval(b, lambda x: x*factor)
         return Image.merge('RGBA', (r,g,b,a))
+    elif color == constants.CYAN:
+        r = Image.eval(r, lambda x: x*factor)
+        return Image.merge('RGBA', (r,g,b,a))
+    elif color == constants.PURPLE:
+        g = Image.eval(g, lambda x: x*factor)
+        return Image.merge('RGBA', (r,g,b,a))
+    elif color == constants.BLACK:
+        r = Image.eval(r, lambda x: x*factor)
+        g = Image.eval(g, lambda x: x*factor)
+        b = Image.eval(b, lambda x: x*factor)
+        return Image.merge('RGBA', (r,g,b,a))
+    elif color == constants.WHITE:
+        r = Image.eval(r, lambda x: min(255, x*(1+factor)))
+        g = Image.eval(g, lambda x: min(255, x*(1+factor)))
+        b = Image.eval(b, lambda x: min(255, x*(1+factor)))
+        return Image.merge('RGBA', (r,g,b,a))
+    
+    return image
+
+
+
     
 def resize_with_padding(image, desired_size):
     """
@@ -232,7 +253,7 @@ class CanvasButton:
             if not self.hovered:
                 self.hovered = True
                 self.canvas.itemconfigure(self.rect_reference, fill=self.color)
-                self.canvas.itemconfigure(self.text_reference, fill='black' if self.color=='white' else 'white')
+                self.canvas.itemconfigure(self.text_reference, fill='black' if self.color in ('white','yellow') else 'white')
         elif self.hovered:
             self.hovered = False
             self.canvas.itemconfigure(self.rect_reference, fill='')
@@ -254,7 +275,7 @@ class CanvasButton:
 
         if self.hovered:
             self.canvas.itemconfigure(self.rect_reference, fill=self.color)
-            self.canvas.itemconfigure(self.text_reference, fill='black' if self.color=='white' else 'white')
+            self.canvas.itemconfigure(self.text_reference, fill='black' if self.color in ('white','yellow') else 'white')
         else:
             self.canvas.itemconfigure(self.rect_reference, fill='')
             self.canvas.itemconfigure(self.text_reference, fill=self.color)

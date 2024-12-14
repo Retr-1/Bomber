@@ -19,8 +19,12 @@ RED = 0
 GREEN = 1
 BLUE = 2
 YELLOW = 3
+CYAN = 4
+PURPLE = 5
+BLACK = 6
+WHITE = 7
 
-COLOR_NAMES = ['red','green','blue','yellow']
+COLOR_NAMES = ['red','green','blue','yellow','cyan','purple','black','white']
 
 MOVING_UP = 1
 MOVING_DOWN = 0b10
