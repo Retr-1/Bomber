@@ -367,10 +367,11 @@ class Subprogram:
         self.frame = tk.Frame(master=master)
 
 class RangePicker(Subprogram):
-    def __init__(self, master, label_text, min, max, default):
+    def __init__(self, master, label_text, min, max, default, func_can_add=lambda x: True):
         super().__init__(master)
         self.min = min
         self.max = max
+        self.func_can_add = func_can_add
         self.left_btn = tk.Button(master=self.frame, text='-', command=lambda: self.add(-1))
         self.right_btn = tk.Button(master=self.frame, text='+', command=lambda: self.add(1))
         self.count = default
@@ -383,12 +384,17 @@ class RangePicker(Subprogram):
         self.right_btn.pack(side=tk.LEFT)      
 
     def add(self, x):
-        if self.min <= self.count+x <= self.max:
+        if self.min <= self.count+x <= self.max and self.func_can_add(x):
             self.count += x
             self.count_label.configure(text=f'{self.count}')
 
     def get(self):
         return self.count
+    
+    def hard_set(self, x):
+        self.count = x
+        self.count_label.configure(text=f'{self.count}')
+
 
 class LevelEditor(Subprogram):
     def __init__(self, master, size, blocksize, func_back_to_menu):
@@ -808,6 +814,13 @@ class Game(Subprogram):
 class LevelSelector(Subprogram):
     def __init__(self, master, func_from_level_select_to_menu, func_start_game):
         super().__init__(master)
+
+        def can_add(x):
+            return self.human_count.get()+self.bot_count.get()+x <= self.max_players
+    
+        def play():
+            if self.human_count.get()+self.bot_count.get() >= 2 and self.max_players >= 2:
+                func_start_game()
         
         self.lvl_label = tk.Label(master=self.frame, text='Select Level: ')
         self.map_name = tk.StringVar()
@@ -815,9 +828,9 @@ class LevelSelector(Subprogram):
         self.lvl_combox['values'] = os.listdir('maps/')
         self.lvl_combox.current(0)
         self.lvl_combox.bind('<<ComboboxSelected>>', self.selection_changed)
-        self.human_count = RangePicker(self.frame, 'Number of Players: ', 0, 4, 1)
-        self.bot_count = RangePicker(self.frame, 'Number of Bots: ', 0, 4, 1)
-        self.play_btn = tk.Button(master=self.frame, text='Start the game', command=func_start_game)
+        self.human_count = RangePicker(self.frame, 'Number of Players: ', 0, 4, 1, can_add)
+        self.bot_count = RangePicker(self.frame, 'Number of Bots: ', 0, 4, 1, can_add)
+        self.play_btn = tk.Button(master=self.frame, text='Start the game', command=play)
         self.menu_btn = tk.Button(master=self.frame, text='Back to menu', command=func_from_level_select_to_menu)
 
         self.lvl_label.grid(row=0, column=0)
@@ -835,6 +848,9 @@ class LevelSelector(Subprogram):
 
     def selection_changed(self, event):
         self.max_players = self.get_max_players(self.map_name.get())
+        if self.human_count.get()+self.bot_count.get() > self.max_players:
+            self.human_count.hard_set(1)
+            self.bot_count.hard_set(1)
         # print(self.max_players, event)
 
     def get_max_players(self, map_name):
