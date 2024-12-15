@@ -382,6 +382,17 @@ class Player:
 class Bot(Player):
     def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas):
         super().__init__(blocksize, color, bot, canvas_x, canvas_y, canvas)
+    
+    # def move(self, code):
+    #     self.moving = code
+    #     if self.moving:
+    #         self.create_moving_animation()
+    #     else:
+    #         self.animation_direction = 0
+
+
+    def update(self, board, bombs, players):
+        pass
 
 
 
