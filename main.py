@@ -704,10 +704,11 @@ class Game(Subprogram):
                 self.loop()
                 return
             
-            self.canvas.itemconfigure(text_reference, text=f'{3-int(dtime)}', font=f'Helvetica {int(MAX_FONT_SIZE-20*(dtime%1))}')
+            self.canvas.itemconfigure(text_reference, text=f'{3-int(dtime)}', font=f'Helvetica {int(MAX_FONT_SIZE-FONT_DELTA*(dtime%1))}')
             self.canvas.after(16, update)
         
         MAX_FONT_SIZE = 50
+        FONT_DELTA = 20
         stime = time.time()
         shadow_reference = self.canvas.create_image(0,0, image=self.shadow, anchor='nw')
         text_reference = self.canvas.create_text(self.size/2, self.size/2, anchor='center', text='3', font=f'Helvetica {MAX_FONT_SIZE}')
