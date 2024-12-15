@@ -285,6 +285,12 @@ class CanvasButton:
             self.canvas.itemconfigure(self.rect_reference, fill='')
             self.canvas.itemconfigure(self.text_reference, fill=self.color)
 
+class BombProperties:
+    def __init__(self, x, y, radius, explodes_at=0):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.explodes_at = explodes_at
 
 class Player:
     LOOKING_DOWN = 0
@@ -379,12 +385,43 @@ class Player:
             self.canvas_reference = self.canvas.create_image(self.canvas_x, self.canvas_y, image=sprite, anchor='center')
 
 class Bot(Player):
-    def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas):
+    def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas, SPEED_MULTIPLIER):
         super().__init__(blocksize, color, bot, canvas_x, canvas_y, canvas)
+        self.SPEED_MULTIPLIER = SPEED_MULTIPLIER
     
+    # def is_dangerous(self, x, y, bombs:set[BombProperties]):
+    #     for bomb in bombs:
+    #         dx = bomb.x-x
+    #         dy = bomb.y-y
+    #         if dx*dy == 0 and abs(dx+dy) <= bomb.radius:
+    #             return True
+    #     return False 
 
-    def update(self, board, bombs, players):
+    def update(self, board, bombs:set[BombProperties], players):
+        def can_safely_detonate(bx, by):
+            max_range = pixpersec*self.bomb_fuse//self.blocksize
+
+
         x,y = int(self.canvas_x//self.blocksize), int(self.canvas_y//self.blocksize)
+        h,w = len(board), len(board[0])
+
+        forbidden = set() # tiles with upcoming explosion
+        for bomb in bombs:
+            forbidden.add((bomb.x, bomb.y))
+            for dx in range(1, bomb.radius):
+                forbidden.add((bomb.x+dx, bomb.y))
+                forbidden.add((bomb.x-dx, bomb.y))
+            for dy in range(1, bomb.radius):
+                forbidden.add((bomb.x, bomb.y+dy))
+                forbidden.add((bomb.x, bomb.y-dy))
+
+
+        pixpersec = self.speed * self.SPEED_MULTIPLIER*60  # pixels per secod
+
+
+
+
+
 
 
 
@@ -537,12 +574,7 @@ class LevelEditor(Subprogram):
         self.redraw()
         file.close()
 
-class BombProperties:
-    def __init__(self, x, y, radius, explodes_at=0):
-        self.x = x
-        self.y = y
-        self.radius = radius
-        self.explodes_at = explodes_at
+
 
 class Game(Subprogram):
     def __init__(self, master, size, blocksize, func_back_to_menu=lambda: None):
