@@ -887,6 +887,7 @@ class LevelSelector(Subprogram):
 class Program:
     def __init__(self):
         self.window = tk.Tk()
+        self.window.title('Bomber')
         self.size = 800
         self.blocksize = 40
         
@@ -925,6 +926,7 @@ class Program:
         self.game.loop()
         self.level_selector.frame.pack_forget()
         self.game.frame.pack()
+        self.game.frame.focus_set()
 
     def from_level_select_to_menu(self):
         self.level_selector.frame.pack_forget()
