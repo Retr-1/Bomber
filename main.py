@@ -527,7 +527,7 @@ class Game(Subprogram):
         self.board = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.canvas_references = [[None]*self.n_blocks for i in range(self.n_blocks)]
         self.game_map = None
-        self.gameover = False
+        self.paused = True
         self.players = []
         self.func_back_to_menu = func_back_to_menu
         bomb_and_explosion = load_and_flatten_spritesheet(self.blocksize+10, 'assets/bomb.png', 50, 20)
@@ -599,7 +599,7 @@ class Game(Subprogram):
         self.n_humans = n_humans
         self.n_bots = n_bots
         self.game_map = game_map
-        self.gameover = False
+        self.paused = True
         
         with open('./maps/' + game_map, 'r') as f:
             self.board = [[int(itm) for itm in line.split()] for line in f]
@@ -633,7 +633,7 @@ class Game(Subprogram):
             player.draw()
 
     def drop_bomb(self, player:Player):
-        if player.dead or time.time() - player.time_of_last_bomb < player.bomb_cooldown or self.gameover:
+        if player.dead or time.time() - player.time_of_last_bomb < player.bomb_cooldown or self.paused:
             return
         # print(time.time())
         player.time_of_last_bomb = time.time()
@@ -692,6 +692,27 @@ class Game(Subprogram):
             player.canvas_reference = None
         
         # AnimationPlayer(self.death_frames, 100, self.canvas, player.canvas_x, player.canvas_y, destroy_reference_on_end=True).play()
+
+    def start(self):
+        def update():
+            dtime = time.time() - stime
+
+            if dtime > 3:
+                self.canvas.delete(shadow_reference)
+                self.canvas.delete(text_reference)
+                self.paused = False
+                self.loop()
+                return
+            
+            self.canvas.itemconfigure(text_reference, text=f'{3-int(dtime)}', font=f'Helvetica {int(MAX_FONT_SIZE-20*(dtime%1))}')
+            self.canvas.after(16, update)
+        
+        MAX_FONT_SIZE = 50
+        stime = time.time()
+        shadow_reference = self.canvas.create_image(0,0, image=self.shadow, anchor='nw')
+        text_reference = self.canvas.create_text(self.size/2, self.size/2, anchor='center', text='3', font=f'Helvetica {MAX_FONT_SIZE}')
+
+        self.canvas.after(16, update)
 
     def loop(self):
         n_alive = 0
@@ -804,14 +825,14 @@ class Game(Subprogram):
         def restart():
             clean()
             self.initialize(self.n_humans, self.n_bots, self.game_map)
-            print('calling loop')
-            self.loop()
+            print('calling start')
+            self.start()
 
         def back_to_menu():
             clean()
             self.func_back_to_menu()
 
-        self.gameover = True
+        self.paused = True
         shadow_reference = self.canvas.create_image(0, 0, anchor='nw', image=self.shadow)
         FONT = 'Helvetica 40'
 
@@ -923,7 +944,7 @@ class Program:
     def start_game(self):
         print(self.level_selector.human_count.get(), self.level_selector.bot_count.get(), self.level_selector.map_name.get())
         self.game.initialize(self.level_selector.human_count.get(), self.level_selector.bot_count.get(), self.level_selector.map_name.get())
-        self.game.loop()
+        self.game.start()
         self.level_selector.frame.pack_forget()
         self.game.frame.pack()
 
