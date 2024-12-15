@@ -322,6 +322,7 @@ class Player:
         self.shielded = False
 
         self.animation = ManualAnimation([self.sprites[self.LOOKING_DOWN][1]], 100)
+        self.animation_direction = 0
         self.shield_animation = None
         self.blocksize = blocksize
 
@@ -337,6 +338,7 @@ class Player:
         self.moving ^= (1<<direction)&self.moving
 
         if self.moving == 0:
+            self.animation_direction = 0
             for d,s in [(constants.MOVING_UP, self.LOOKING_UP), (constants.MOVING_DOWN, self.LOOKING_DOWN),(constants.MOVING_LEFT, self.LOOKING_LEFT),(constants.MOVING_RIGHT, self.LOOKING_RIGHT)]:
                 if d & (1<<direction):
                     self.animation = ManualAnimation([self.sprites[s][1]], 100)
@@ -350,12 +352,24 @@ class Player:
         # frame_length = x / speed
         # 100 = x / blocksize/800
         if self.moving & constants.MOVING_UP:
+            if self.animation_direction == constants.MOVING_UP:
+                return self.animation
+            self.animation_direction = constants.MOVING_UP
             return ManualAnimation(self.sprites[self.LOOKING_UP] + [self.sprites[self.LOOKING_UP][1]], FRAME_LENGTH*3//2)
         elif self.moving & constants.MOVING_DOWN:
+            if self.animation_direction == constants.MOVING_DOWN:
+                return self.animation
+            self.animation_direction = constants.MOVING_DOWN
             return ManualAnimation(self.sprites[self.LOOKING_DOWN] + [self.sprites[self.LOOKING_DOWN][1]], FRAME_LENGTH*3//2)
         elif self.moving & constants.MOVING_LEFT:
+            if self.animation_direction == constants.MOVING_LEFT:
+                return self.animation
+            self.animation_direction = constants.MOVING_LEFT
             return ManualAnimation(self.sprites[self.LOOKING_LEFT], FRAME_LENGTH)
         elif self.moving & constants.MOVING_RIGHT:
+            if self.animation_direction == constants.MOVING_RIGHT:
+                return self.animation
+            self.animation_direction = constants.MOVING_RIGHT
             return ManualAnimation(self.sprites[self.LOOKING_RIGHT], FRAME_LENGTH)
         
         return None
