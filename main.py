@@ -350,9 +350,9 @@ class Player:
         # frame_length = x / speed
         # 100 = x / blocksize/800
         if self.moving & constants.MOVING_UP:
-            return ManualAnimation(self.sprites[self.LOOKING_UP] + self.sprites[self.LOOKING_UP][-2:0:-1], FRAME_LENGTH*3//2)
+            return ManualAnimation(self.sprites[self.LOOKING_UP] + [self.sprites[self.LOOKING_UP][1]], FRAME_LENGTH*3//2)
         elif self.moving & constants.MOVING_DOWN:
-            return ManualAnimation(self.sprites[self.LOOKING_DOWN] + self.sprites[self.LOOKING_DOWN][-2:0:-1], FRAME_LENGTH*3//2)
+            return ManualAnimation(self.sprites[self.LOOKING_DOWN] + [self.sprites[self.LOOKING_DOWN][1]], FRAME_LENGTH*3//2)
         elif self.moving & constants.MOVING_LEFT:
             return ManualAnimation(self.sprites[self.LOOKING_LEFT], FRAME_LENGTH)
         elif self.moving & constants.MOVING_RIGHT:
