@@ -326,24 +326,23 @@ class Player:
         self.shield_animation = None
         self.blocksize = blocksize
 
-    def start_moving(self, direction):
-        # print(self.canvas_x, direction, 's', self.dead)
-        if not self.moving & (1<<direction):
-            self.moving |= (1<<direction)
-            self.animation = self.create_moving_animation()
-        # print(self.animation, self.moving, self.moving & constants.MOVING_DOWN)
-
-    def stop_moving(self, direction):
-        # print(self.canvas_x, direction, 'e')
-        self.moving ^= (1<<direction)&self.moving
-
-        if self.moving == 0:
+    def move(self, code):
+        if code == 0:
             self.animation_direction = 0
             for d,s in [(constants.MOVING_UP, self.LOOKING_UP), (constants.MOVING_DOWN, self.LOOKING_DOWN),(constants.MOVING_LEFT, self.LOOKING_LEFT),(constants.MOVING_RIGHT, self.LOOKING_RIGHT)]:
-                if d & (1<<direction):
+                if d & self.moving:
                     self.animation = ManualAnimation([self.sprites[s][1]], 100)
+                    break
+            self.moving = 0
         else:
+            self.moving = code
             self.animation = self.create_moving_animation()
+
+    def start_moving(self, direction):
+        self.move(self.moving | (1<<direction))
+
+    def stop_moving(self, direction):
+        self.move(self.moving ^ ((1<<direction)&self.moving))
 
 
     def create_moving_animation(self):
@@ -372,7 +371,7 @@ class Player:
             self.animation_direction = constants.MOVING_RIGHT
             return ManualAnimation(self.sprites[self.LOOKING_RIGHT], FRAME_LENGTH)
         
-        return None
+        return self.animation
 
     def draw(self):
         if self.canvas_reference == None:
