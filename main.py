@@ -927,11 +927,14 @@ class Program:
         self.blocksize = 40
         
         self.menu_frame = tk.Frame(master=self.window)
+        self.menu_logo_image = ImageTk.PhotoImage(Image.open('assets/logo.jpg'))
+        self.menu_logo = tk.Label(master=self.menu_frame, image=self.menu_logo_image)
         self.menu_btn_play = tk.Button(master=self.menu_frame, text='Play', font='Helvetica 26', command=self.from_menu_to_level_select)
         self.menu_btn_editor = tk.Button(master=self.menu_frame,text='Level Editor', font='Helvetica 26', command=self.from_menu_to_editor)
 
-        self.menu_btn_play.grid(row=0, column=0, sticky='nswe')
-        self.menu_btn_editor.grid(row=1, column=0, sticky='nswe')
+        self.menu_logo.grid(row=0, column=0, sticky='nswe')
+        self.menu_btn_play.grid(row=1, column=0, sticky='nswe')
+        self.menu_btn_editor.grid(row=2, column=0, sticky='nswe')
 
 
         self.level_selector = LevelSelector(self.window, self.from_level_select_to_menu, self.start_game)
