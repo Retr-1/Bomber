@@ -537,6 +537,12 @@ class LevelEditor(Subprogram):
         self.redraw()
         file.close()
 
+class BombProperties:
+    def __init__(self, x, y, radius, explodes_at=0):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.explodes_at = explodes_at
 
 class Game(Subprogram):
     def __init__(self, master, size, blocksize, func_back_to_menu=lambda: None):
@@ -551,7 +557,7 @@ class Game(Subprogram):
         self.game_map = None
         self.paused = True
         self.players = []
-        self.bombs = set() # set of (x,y) tuples
+        self.bombs:list[BombProperties] = set()
         self.func_back_to_menu = func_back_to_menu
         bomb_and_explosion = load_and_flatten_spritesheet(self.blocksize+10, 'assets/bomb.png', 50, 20)
         self.bomb_frames = bomb_and_explosion[:4]
@@ -666,23 +672,22 @@ class Game(Subprogram):
         # print(time.time())
         print('drop', player.color, self.bombs)
 
-        canvas_x,canvas_y = player.canvas_x//self.blocksize*self.blocksize + self.blocksize/2, player.canvas_y//self.blocksize*self.blocksize + self.blocksize/2
+        bomb = BombProperties(x,y,player.bomb_radius)
+        canvas_x,canvas_y = x*self.blocksize + self.blocksize/2, y*self.blocksize + self.blocksize/2
         player.time_of_last_bomb = time.time()
-        self.bombs.add((x,y))
-        animation = AnimationPlayer(self.bomb_frames, None, self.canvas, canvas_x, canvas_y, lambda: self.explode_bomb(player, canvas_x, canvas_y), True, player.bomb_fuse)
+        self.bombs.add(bomb)
+        animation = AnimationPlayer(self.bomb_frames, None, self.canvas, canvas_x, canvas_y, lambda: self.explode_bomb(bomb), True, player.bomb_fuse)
         animation.play()
 
-    def explode_bomb(self, placed_by:Player, canvas_x, canvas_y):
+    def explode_bomb(self, bomb:BombProperties):
         # print('exploding...', len(self.explosion_frames))
-
+        canvas_x, canvas_y = bomb.x*self.blocksize + self.blocksize/2, bomb.y*self.blocksize + self.blocksize/2
         animation = AnimationPlayer(self.explosion_frames, 100, self.canvas, canvas_x, canvas_y, destroy_reference_on_end=True)
         animation.play()
         # fire_animation = AnimationPlayer(self.fire_frames, 40, self.canvas, canvas_x, canvas_y, destroy_reference_on_end=True)
         # fire_animation.play()
 
-        x,y = int(canvas_x//self.blocksize), int(canvas_y//self.blocksize)
-
-        self.bombs.remove((x,y))
+        x,y = bomb.x, bomb.y
 
         for player in self.players:
             px,py = player.canvas_x//self.blocksize, player.canvas_y//self.blocksize
@@ -690,7 +695,7 @@ class Game(Subprogram):
                 self.hit(player)
 
         for dx,dy in ((0,-1), (0,1), (-1,0), (1,0)):
-            for i in range(1, placed_by.bomb_radius):
+            for i in range(1, bomb.radius):
                 nx,ny = int(x+dx*i), int(y+dy*i)
 
                 if nx < 0 or nx >= self.n_blocks or ny < 0 or ny >= self.n_blocks or self.board[ny][nx] == constants.WALL:
@@ -711,6 +716,8 @@ class Game(Subprogram):
 
                 animation = AnimationPlayer(self.explosion_frames, 100, self.canvas, nx*self.blocksize+self.blocksize/2, ny*self.blocksize+self.blocksize/2, destroy_reference_on_end=True)
                 animation.play()
+        
+        self.bombs.remove(bomb)
 
     def hit(self, player:Player):
         if player.shielded:
