@@ -715,15 +715,14 @@ class Game(Subprogram):
             value = (move[0]**2 + move[1]**2)**0.5
 
             if value != 0:
-                SCALE = self.blocksize/12*player.speed
-                move = (int(move[0]/value*SCALE), int(move[1]/value*SCALE))
-
-                oldx,oldy = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize
+                SCALE = self.blocksize/15*player.speed
+                move = (move[0]/value*SCALE, move[1]/value*SCALE)
+                oldx,oldy = int(player.canvas_x//self.blocksize), int(player.canvas_y//self.blocksize)
 
                 player.canvas_x += move[0]
                 player.canvas_y += move[1]
 
-                x,y = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize
+                x,y = int(player.canvas_x//self.blocksize), int(player.canvas_y//self.blocksize)
                 # print(x,y)
                 if x < 0 or x >= self.n_blocks or self.board[oldy][x] in [constants.WALL, constants.BARREL]:
                     player.canvas_x -= move[0]
@@ -746,7 +745,7 @@ class Game(Subprogram):
             if player.shield_canvas_reference != None:
                 self.canvas.coords(player.shield_canvas_reference, player.canvas_x, player.canvas_y)
             
-            x,y = (player.canvas_x)//self.blocksize, (player.canvas_y)//self.blocksize
+            x,y = int(player.canvas_x//self.blocksize), int(player.canvas_y//self.blocksize)
             
             match self.board[y][x]:
                 case constants.SPEED_BUFF:
