@@ -321,7 +321,7 @@ class Player:
         self.bomb_radius = 3 # tiles
         self.shielded = False
 
-        self.animation = None
+        self.animation = ManualAnimation([self.sprites[self.LOOKING_DOWN][1]], 100)
         self.shield_animation = None
         self.blocksize = blocksize
 
@@ -695,7 +695,7 @@ class Game(Subprogram):
 
     def loop(self):
         n_alive = 0
-        for player in self.players:
+        for player in sorted(self.players, key=lambda player: player.canvas_y):
             if player.dead:
                 continue
 
