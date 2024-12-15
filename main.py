@@ -365,7 +365,11 @@ class Player:
             sprite = self.sprites[self.LOOKING_DOWN][1]
             self.canvas_reference = self.canvas.create_image(self.canvas_x, self.canvas_y, image=sprite, anchor='center')
 
-        
+class Bot(Player):
+    def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas):
+        super().__init__(blocksize, color, bot, canvas_x, canvas_y, canvas)
+
+
 
 class Subprogram:
     def __init__(self, master):
@@ -856,9 +860,7 @@ class Game(Subprogram):
         self.menu_btn.set_color(color)
         self.play_again_btn.place()
         self.menu_btn.place()
-            
-
-                
+                        
 
 class LevelSelector(Subprogram):
     def __init__(self, master, func_from_level_select_to_menu, func_start_game):
