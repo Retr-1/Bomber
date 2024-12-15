@@ -382,16 +382,10 @@ class Bot(Player):
     def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas):
         super().__init__(blocksize, color, bot, canvas_x, canvas_y, canvas)
     
-    # def move(self, code):
-    #     self.moving = code
-    #     if self.moving:
-    #         self.create_moving_animation()
-    #     else:
-    #         self.animation_direction = 0
-
 
     def update(self, board, bombs, players):
-        pass
+        x,y = int(self.canvas_x//self.blocksize), int(self.canvas_y//self.blocksize)
+
 
 
 
@@ -557,6 +551,7 @@ class Game(Subprogram):
         self.game_map = None
         self.paused = True
         self.players = []
+        self.bombs = set() # set of (x,y) tuples
         self.func_back_to_menu = func_back_to_menu
         bomb_and_explosion = load_and_flatten_spritesheet(self.blocksize+10, 'assets/bomb.png', 50, 20)
         self.bomb_frames = bomb_and_explosion[:4]
@@ -663,11 +658,18 @@ class Game(Subprogram):
     def drop_bomb(self, player:Player):
         if player.dead or time.time() - player.time_of_last_bomb < player.bomb_cooldown or self.paused:
             return
+        
+        x,y = int(player.canvas_x//self.blocksize), int(player.canvas_y//self.blocksize)
+        if (x, y) in self.bombs:
+            return
+        
         # print(time.time())
+        print('drop', player.color, self.bombs)
+
+        canvas_x,canvas_y = player.canvas_x//self.blocksize*self.blocksize + self.blocksize/2, player.canvas_y//self.blocksize*self.blocksize + self.blocksize/2
         player.time_of_last_bomb = time.time()
-        # print('drop', player.canvas_x)
-        gridx,gridy = player.canvas_x//self.blocksize*self.blocksize + self.blocksize/2, player.canvas_y//self.blocksize*self.blocksize + self.blocksize/2
-        animation = AnimationPlayer(self.bomb_frames, None, self.canvas, gridx, gridy, lambda: self.explode_bomb(player, gridx, gridy), True, player.bomb_fuse)
+        self.bombs.add((x,y))
+        animation = AnimationPlayer(self.bomb_frames, None, self.canvas, canvas_x, canvas_y, lambda: self.explode_bomb(player, canvas_x, canvas_y), True, player.bomb_fuse)
         animation.play()
 
     def explode_bomb(self, placed_by:Player, canvas_x, canvas_y):
@@ -678,7 +680,9 @@ class Game(Subprogram):
         # fire_animation = AnimationPlayer(self.fire_frames, 40, self.canvas, canvas_x, canvas_y, destroy_reference_on_end=True)
         # fire_animation.play()
 
-        x,y = canvas_x//self.blocksize, canvas_y//self.blocksize
+        x,y = int(canvas_x//self.blocksize), int(canvas_y//self.blocksize)
+
+        self.bombs.remove((x,y))
 
         for player in self.players:
             px,py = player.canvas_x//self.blocksize, player.canvas_y//self.blocksize
