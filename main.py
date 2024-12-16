@@ -300,7 +300,7 @@ class Player:
 
     SPRITESHEET = spritesheeter.split('assets/player.png')
 
-    def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas):
+    def __init__(self, blocksize, color, canvas_x, canvas_y, canvas):
         def convert(image):
             image = resize_to_fit(image, blocksize, blocksize)
             image = tint_image(image, color)
@@ -313,7 +313,6 @@ class Player:
         self.canvas_reference = None
         self.shield_canvas_reference = None
         self.canvas:tk.Canvas = canvas
-        self.bot = bot
         self.canvas_x = canvas_x
         self.canvas_y = canvas_y
         self.moving = 0
@@ -393,8 +392,8 @@ class Bot(Player):
     TARGET_BARREL = 1
     TARGET_BUFF = 2
 
-    def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas, func_speed_to_pixels_per_second, func_drop_bomb):
-        super().__init__(blocksize, color, bot, canvas_x, canvas_y, canvas)
+    def __init__(self, blocksize, color, canvas_x, canvas_y, canvas, func_speed_to_pixels_per_second, func_drop_bomb):
+        super().__init__(blocksize, color, canvas_x, canvas_y, canvas)
         self.func_speed_to_pixels_per_second = func_speed_to_pixels_per_second
         self.func_drop_bomb = func_drop_bomb
         self.target = None
@@ -810,7 +809,7 @@ class Game(Subprogram):
         BINDS = (('w','s','a','d','q'), ("Up", "Down", "Left", "Right", '/'), ('i','k','j','l','u'), ('t','g','f','h','r'))
         for i in range(n_humans):
             x,y = spawnpoints[i]
-            self.players.append(Player(self.blocksize, i, False, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas))
+            self.players.append(Player(self.blocksize, i, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas))
             for j in range(4):
                 self.canvas.bind_all(f'<KeyPress-{BINDS[i][j]}>', lambda event, j=j, player=self.players[i]: player.start_moving(j))
                 self.canvas.bind_all(f'<KeyRelease-{BINDS[i][j]}>', lambda event, j=j, player=self.players[i]: player.stop_moving(j))
@@ -818,7 +817,7 @@ class Game(Subprogram):
 
         for j in range(n_bots):
             x,y = spawnpoints[j+n_humans]
-            bot = Bot(self.blocksize, j+n_humans, True, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas, lambda x: self.blocksize/15*x*60, None)
+            bot = Bot(self.blocksize, j+n_humans, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas, lambda x: self.blocksize/15*x*60, None)
             bot.func_drop_bomb = lambda b=bot: self.drop_bomb(b)
             self.players.append(bot)
             self.bots.append(bot)
