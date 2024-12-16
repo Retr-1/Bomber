@@ -384,24 +384,21 @@ class Player:
             sprite = self.sprites[self.LOOKING_DOWN][1]
             self.canvas_reference = self.canvas.create_image(self.canvas_x, self.canvas_y, image=sprite, anchor='center')
 
+    x = property(lambda self: self.canvas_x//self.blocksize)
+    y = property(lambda self: self.canvas_y//self.blocksize)
+
+
 class Bot(Player):
-    def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas, func_speed_to_pixels_per_second):
+    def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas, func_speed_to_pixels_per_second, func_drop_bomb):
         super().__init__(blocksize, color, bot, canvas_x, canvas_y, canvas)
         self.func_speed_to_pixels_per_second = func_speed_to_pixels_per_second
-    
-    # def is_dangerous(self, x, y, bombs:set[BombProperties]):
-    #     for bomb in bombs:
-    #         dx = bomb.x-x
-    #         dy = bomb.y-y
-    #         if dx*dy == 0 and abs(dx+dy) <= bomb.radius:
-    #             return True
-    #     return False 
+        self.func_drop_bomb = func_drop_bomb
 
     def evaluate(self, board, bombs:set[BombProperties], players):
         def can_safely_detonate(x, y):
             pass
 
-        def closest_path_to_safety(x,y):
+        def closest_path_to_safety(x, y, forbidden):
             batch = [[(x,y)]]
             visited = set()
             while True:
@@ -421,12 +418,16 @@ class Bot(Player):
                         visited.add((nx,ny))
                         batch.append(new_path)
 
-
-        x,y = int(self.canvas_x//self.blocksize), int(self.canvas_y//self.blocksize)
-        h,w = len(board), len(board[0])
-
-        forbidden = set() # tiles with upcoming explosion
-        for bomb in bombs:
+        def enemy_in_range(x, y):
+            for player in players:
+                if player is self:
+                    continue
+                dx,dy = player.x-x, player.y-y
+                if dx*dy == 0 and abs(dx+dy) < self.bomb_radius:
+                    return True
+            return False
+        
+        def mark_bomb(bomb:BombProperties, forbidden:set):
             forbidden.add((bomb.x, bomb.y))
             for dx in range(1, bomb.radius):
                 forbidden.add((bomb.x+dx, bomb.y))
@@ -434,11 +435,31 @@ class Bot(Player):
             for dy in range(1, bomb.radius):
                 forbidden.add((bomb.x, bomb.y+dy))
                 forbidden.add((bomb.x, bomb.y-dy))
+        
+        def can_safely_detonate(x, y):
+            extra_forbidden = forbidden.copy()
+            my_bomb = BombProperties(x, y, self.bomb_radius)
+            mark_bomb(my_bomb, extra_forbidden)
+            path_to_safety = closest_path_to_safety(x, y, extra_forbidden)
+            blocks = len(path_to_safety)-1
+            if blocks == -1:
+                return False
+            pixel_distance = blocks*self.blocksize
+            return pixel_distance/pixel_speed < self.bomb_fuse/1000
+
+
+        x,y = int(self.canvas_x//self.blocksize), int(self.canvas_y//self.blocksize)
+        h,w = len(board), len(board[0])
+        pixel_speed = self.func_speed_to_pixels_per_second(self.speed)
+
+        forbidden = set() # tiles with upcoming explosion
+        for bomb in bombs:
+            mark_bomb(bomb, forbidden)
 
         if (x,y) in forbidden:
             # print('DANGER')
             # is endangered get to closesest safe spot
-            path_to_safety = closest_path_to_safety(x,y)
+            path_to_safety = closest_path_to_safety(x, y, forbidden)
             if len(path_to_safety) == 0:
                 # print('No choice')
                 return
@@ -453,6 +474,9 @@ class Bot(Player):
                 self.move(constants.MOVING_UP)
             elif dy == 1:
                 self.move(constants.MOVING_DOWN)
+        elif time.time()-self.time_of_last_bomb > self.bomb_cooldown and enemy_in_range(x, y) and can_safely_detonate(x, y):
+            print(f'{self.color} is dropping !')
+            self.func_drop_bomb()
         else:
             self.move(0)
 
@@ -727,7 +751,8 @@ class Game(Subprogram):
 
         for j in range(n_bots):
             x,y = spawnpoints[j+n_humans]
-            bot = Bot(self.blocksize, j+n_humans, True, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas, lambda x: self.blocksize/15*x*60)
+            bot = Bot(self.blocksize, j+n_humans, True, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas, lambda x: self.blocksize/15*x*60, None)
+            bot.func_drop_bomb = lambda b=bot: self.drop_bomb(b)
             self.players.append(bot)
             self.bots.append(bot)
 
