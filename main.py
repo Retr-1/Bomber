@@ -513,6 +513,12 @@ class Bot(Player):
         for bomb in bombs:
             mark_bomb(bomb, forbidden)
 
+        for pos in self.target_path:
+            if pos in forbidden:
+                self.target = None
+                self.target_path = []
+                return
+
         if (x,y) in forbidden:
             self.target = None
             self.target_path = closest_path_to_safety(x, y, forbidden)[1:]
@@ -530,7 +536,7 @@ class Bot(Player):
             print('target', self.target)
             if not self.target:
                 self.move(0)
-        else:
+        else:            
             print('path', self.target_path, x, y)
             if len(self.target_path) == 0:
                 if self.target == self.TARGET_BARREL and can_safely_detonate(x, y):
