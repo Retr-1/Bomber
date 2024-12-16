@@ -477,10 +477,11 @@ class Bot(Player):
                 
                 for nx,ny in [(px,py+1), (px,py-1), (px+1, py), (px-1, py)]:
                     if w > nx >= 0 and h > ny >= 0 and (not (nx,ny) in visited) and (not (nx,ny) in forbidden):
-                        if board[ny][nx] == constants.BARREL and can_safely_detonate(px, py):
-                            self.target = self.TARGET_BARREL
-                            self.target_path = path
-                            return
+                        if board[ny][nx] == constants.BARREL:
+                            if can_safely_detonate(px, py):
+                                self.target = self.TARGET_BARREL
+                                self.target_path = path
+                                return
                         elif board[ny][nx] != constants.WALL:                        
                             new_path = path + [(nx,ny)]
                             visited.add((nx,ny))
@@ -502,8 +503,6 @@ class Bot(Player):
             
             self.move(code)
                 
-
-
 
         x,y = int(self.canvas_x//self.blocksize), int(self.canvas_y//self.blocksize)
         h,w = len(board), len(board[0])
@@ -529,15 +528,15 @@ class Bot(Player):
             follow_path(self.target_path)
 
         elif time.time()-self.time_of_last_bomb > self.bomb_cooldown and enemy_in_range(x, y) and can_safely_detonate(x, y):
-            print(f'{self.color} is dropping !')
+            # print(f'{self.color} is dropping !')
             self.func_drop_bomb()
         elif self.target == None:
             find_target(x, y)
-            print('target', self.target)
+            # print('target', self.target)
             if not self.target:
                 self.move(0)
         else:            
-            print('path', self.target_path, x, y, 'target', self.target)
+            # print('path', self.target_path, x, y, 'target', self.target)
             if len(self.target_path) == 0:
                 if self.target == self.TARGET_BARREL and can_safely_detonate(x, y):
                     self.func_drop_bomb()
@@ -548,11 +547,6 @@ class Bot(Player):
                     self.target_path.pop(0)
                 else:
                     follow_path(self.target_path)
-
-
-
-
-
 
 
 
@@ -909,7 +903,7 @@ class Game(Subprogram):
         def update():
             dtime = time.time() - stime
 
-            if True: #dtime > 3:
+            if dtime > 3:
                 self.canvas.delete(shadow_reference)
                 self.canvas.delete(text_reference)
                 self.paused = False
