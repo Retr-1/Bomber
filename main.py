@@ -517,7 +517,7 @@ class Bot(Player):
             if pos in forbidden:
                 self.target = None
                 self.target_path = []
-                return
+                break
 
         if (x,y) in forbidden:
             self.target = None
@@ -537,11 +537,12 @@ class Bot(Player):
             if not self.target:
                 self.move(0)
         else:            
-            print('path', self.target_path, x, y)
+            print('path', self.target_path, x, y, 'target', self.target)
             if len(self.target_path) == 0:
                 if self.target == self.TARGET_BARREL and can_safely_detonate(x, y):
                     self.func_drop_bomb()
                 self.target = None
+                return self.evaluate(board, bombs, players)
             else:
                 if x == self.target_path[0][0] and y == self.target_path[0][1]:
                     self.target_path.pop(0)
