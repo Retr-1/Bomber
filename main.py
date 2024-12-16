@@ -444,7 +444,7 @@ class Bot(Player):
                 return
             # print(path_to_safety)
             dx,dy = path_to_safety[1][0] - x, path_to_safety[1][1] - y
-            print(dx,dy)
+            
             if dx == -1:
                 self.move(constants.MOVING_LEFT)
             elif dx == 1:
@@ -700,7 +700,6 @@ class Game(Subprogram):
         self.n_bots = n_bots
         self.game_map = game_map
         self.paused = True
-        self.bots.clear()
         
         with open('./maps/' + game_map, 'r') as f:
             self.board = [[int(itm) for itm in line.split()] for line in f]
@@ -938,6 +937,7 @@ class Game(Subprogram):
                 if player.shield_canvas_reference:
                     self.canvas.delete(player.shield_canvas_reference)
             self.players.clear()
+            self.bots.clear()
 
         def restart():
             clean()
