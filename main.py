@@ -385,9 +385,9 @@ class Player:
             self.canvas_reference = self.canvas.create_image(self.canvas_x, self.canvas_y, image=sprite, anchor='center')
 
 class Bot(Player):
-    def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas, SPEED_MULTIPLIER):
+    def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas, func_speed_to_pixels_per_second):
         super().__init__(blocksize, color, bot, canvas_x, canvas_y, canvas)
-        self.SPEED_MULTIPLIER = SPEED_MULTIPLIER
+        self.func_speed_to_pixels_per_second = func_speed_to_pixels_per_second
     
     # def is_dangerous(self, x, y, bombs:set[BombProperties]):
     #     for bomb in bombs:
@@ -397,9 +397,29 @@ class Bot(Player):
     #             return True
     #     return False 
 
-    def update(self, board, bombs:set[BombProperties], players):
-        def can_safely_detonate(bx, by):
-            max_range = pixpersec*self.bomb_fuse//self.blocksize
+    def evaluate(self, board, bombs:set[BombProperties], players):
+        def can_safely_detonate(x, y):
+            pass
+
+        def closest_path_to_safety(x,y):
+            batch = [[(x,y)]]
+            visited = set()
+            while True:
+                # print(batch)
+                if len(batch) == 0:
+                    return []
+                
+                path = batch.pop(0)
+                px,py = path[-1][0], path[-1][1]
+
+                if not path[-1] in forbidden:
+                    return path
+                
+                for nx,ny in [(px,py+1), (px,py-1), (px+1, py), (px-1, py)]:
+                    if w > nx >= 0 and h > ny >= 0 and (not (nx,ny) in visited) and (not board[ny][nx] in [constants.WALL, constants.BARREL]):
+                        new_path = path + [(nx,ny)]
+                        visited.add((nx,ny))
+                        batch.append(new_path)
 
 
         x,y = int(self.canvas_x//self.blocksize), int(self.canvas_y//self.blocksize)
@@ -415,8 +435,26 @@ class Bot(Player):
                 forbidden.add((bomb.x, bomb.y+dy))
                 forbidden.add((bomb.x, bomb.y-dy))
 
-
-        pixpersec = self.speed * self.SPEED_MULTIPLIER*60  # pixels per secod
+        if (x,y) in forbidden:
+            # print('DANGER')
+            # is endangered get to closesest safe spot
+            path_to_safety = closest_path_to_safety(x,y)
+            if len(path_to_safety) == 0:
+                # print('No choice')
+                return
+            # print(path_to_safety)
+            dx,dy = path_to_safety[1][0] - x, path_to_safety[1][1] - y
+            print(dx,dy)
+            if dx == -1:
+                self.move(constants.MOVING_LEFT)
+            elif dx == 1:
+                self.move(constants.MOVING_RIGHT)
+            elif dy == -1:
+                self.move(constants.MOVING_UP)
+            elif dy == 1:
+                self.move(constants.MOVING_DOWN)
+        else:
+            self.move(0)
 
 
 
@@ -589,6 +627,7 @@ class Game(Subprogram):
         self.game_map = None
         self.paused = True
         self.players = []
+        self.bots = []
         self.bombs:list[BombProperties] = set()
         self.func_back_to_menu = func_back_to_menu
         bomb_and_explosion = load_and_flatten_spritesheet(self.blocksize+10, 'assets/bomb.png', 50, 20)
@@ -629,7 +668,7 @@ class Game(Subprogram):
         s = sum(tp)
         for i in range(len(tp)):
             tp[i] /= s
-        print(self.trinket_probabilities)
+        # print(self.trinket_probabilities)
 
 
     def _mouse1(self, event):
@@ -661,6 +700,7 @@ class Game(Subprogram):
         self.n_bots = n_bots
         self.game_map = game_map
         self.paused = True
+        self.bots.clear()
         
         with open('./maps/' + game_map, 'r') as f:
             self.board = [[int(itm) for itm in line.split()] for line in f]
@@ -688,7 +728,9 @@ class Game(Subprogram):
 
         for j in range(n_bots):
             x,y = spawnpoints[j+n_humans]
-            self.players.append(Player(self.blocksize, j+n_humans, True, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas))
+            bot = Bot(self.blocksize, j+n_humans, True, x*self.blocksize+self.blocksize//2, y*self.blocksize+self.blocksize//2, self.canvas, lambda x: self.blocksize/15*x*60)
+            self.players.append(bot)
+            self.bots.append(bot)
 
         for player in self.players:
             player.draw()
@@ -768,7 +810,7 @@ class Game(Subprogram):
         def update():
             dtime = time.time() - stime
 
-            if dtime > 3:
+            if True: #dtime > 3:
                 self.canvas.delete(shadow_reference)
                 self.canvas.delete(text_reference)
                 self.paused = False
@@ -787,6 +829,10 @@ class Game(Subprogram):
         self.canvas.after(16, update)
 
     def loop(self):
+        for bot in self.bots:
+            bot:Bot
+            bot.evaluate(self.board, self.bombs, self.players)
+
         n_alive = 0
         for player in sorted(self.players, key=lambda player: player.canvas_y):
             if player.dead:

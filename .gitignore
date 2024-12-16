@@ -1,3 +1,4 @@
 test.py
 maps/
 computed/
+__pycache__/
