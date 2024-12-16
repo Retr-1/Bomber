@@ -389,10 +389,16 @@ class Player:
 
 
 class Bot(Player):
+    TARGET_PLAYER = 0
+    TARGET_BARREL = 1
+    TARGET_BUFF = 2
+
     def __init__(self, blocksize, color, bot, canvas_x, canvas_y, canvas, func_speed_to_pixels_per_second, func_drop_bomb):
         super().__init__(blocksize, color, bot, canvas_x, canvas_y, canvas)
         self.func_speed_to_pixels_per_second = func_speed_to_pixels_per_second
         self.func_drop_bomb = func_drop_bomb
+        self.target = None
+        self.target_path = []
 
     def evaluate(self, board, bombs:set[BombProperties], players):
         def can_safely_detonate(x, y):
@@ -407,7 +413,7 @@ class Bot(Player):
                     return []
                 
                 path = batch.pop(0)
-                px,py = path[-1][0], path[-1][1]
+                px,py = path[-1]
 
                 if not path[-1] in forbidden:
                     return path
@@ -446,6 +452,57 @@ class Bot(Player):
                 return False
             pixel_distance = blocks*self.blocksize
             return pixel_distance/pixel_speed < self.bomb_fuse/1000
+        
+        def find_target(x, y):
+            batch = [[(x,y)]]
+            visited = set()
+
+            while True:
+                if len(batch) == 0:
+                    # Honestly no idea when this could happen
+                    return
+                
+                path = batch.pop(0)
+                px, py = path[-1]
+
+                if board[py][px] in [constants.SPEED_BUFF, constants.RADIUS_BUFF, constants.FUSE_BUFF, constants.COOLDOWN_BUFF, constants.SHIELD]:
+                    self.target = self.TARGET_BUFF
+                    self.target_path = path
+                    return
+                
+                if enemy_in_range(px, py):
+                    self.target = self.TARGET_PLAYER
+                    self.target_path = path
+                    return
+                
+                for nx,ny in [(px,py+1), (px,py-1), (px+1, py), (px-1, py)]:
+                    if w > nx >= 0 and h > ny >= 0 and (not (nx,ny) in visited) and (not (nx,ny) in forbidden):
+                        if board[ny][nx] == constants.BARREL and can_safely_detonate(px, py):
+                            self.target = self.TARGET_BARREL
+                            self.target_path = path
+                            return
+                        elif board[ny][nx] != constants.WALL:                        
+                            new_path = path + [(nx,ny)]
+                            visited.add((nx,ny))
+                            batch.append(new_path)
+
+        def follow_path(path):
+            dx,dy = path[0][0] - x, path[0][1] - y
+            code = 0
+
+            if dx == -1:
+                code |= constants.MOVING_LEFT
+            elif dx == 1:
+                code |= constants.MOVING_RIGHT
+
+            if dy == -1:
+                code |= constants.MOVING_UP
+            elif dy == 1:
+                code |= constants.MOVING_DOWN
+            
+            self.move(code)
+                
+
 
 
         x,y = int(self.canvas_x//self.blocksize), int(self.canvas_y//self.blocksize)
@@ -457,28 +514,32 @@ class Bot(Player):
             mark_bomb(bomb, forbidden)
 
         if (x,y) in forbidden:
-            # print('DANGER')
-            # is endangered get to closesest safe spot
-            path_to_safety = closest_path_to_safety(x, y, forbidden)
+            path_to_safety = closest_path_to_safety(x, y, forbidden)[1:]
             if len(path_to_safety) == 0:
-                # print('No choice')
+                self.move(0)
                 return
-            # print(path_to_safety)
-            dx,dy = path_to_safety[1][0] - x, path_to_safety[1][1] - y
             
-            if dx == -1:
-                self.move(constants.MOVING_LEFT)
-            elif dx == 1:
-                self.move(constants.MOVING_RIGHT)
-            elif dy == -1:
-                self.move(constants.MOVING_UP)
-            elif dy == 1:
-                self.move(constants.MOVING_DOWN)
+            follow_path(path_to_safety)
+
         elif time.time()-self.time_of_last_bomb > self.bomb_cooldown and enemy_in_range(x, y) and can_safely_detonate(x, y):
             print(f'{self.color} is dropping !')
             self.func_drop_bomb()
+        elif self.target == None:
+            find_target(x, y)
+            print('target', self.target)
+            if not self.target:
+                self.move(0)
         else:
-            self.move(0)
+            print('path', self.target_path, x, y)
+            if len(self.target_path) == 0:
+                if self.target == self.TARGET_BARREL and can_safely_detonate(x, y):
+                    self.func_drop_bomb()
+                self.target = None
+            else:
+                if x == self.target_path[0][0] and y == self.target_path[0][1]:
+                    self.target_path.pop(0)
+                else:
+                    follow_path(self.target_path)
 
 
 
@@ -768,11 +829,13 @@ class Game(Subprogram):
             return
         
         x,y = int(player.canvas_x//self.blocksize), int(player.canvas_y//self.blocksize)
-        if (x, y) in self.bombs:
-            return
+
+        for bomb in self.bombs:
+            if x == bomb.x and y == bomb.y:
+                return
         
         # print(time.time())
-        print('drop', player.color, self.bombs)
+        # print('drop', player.color, self.bombs)
 
         bomb = BombProperties(x,y,player.bomb_radius)
         canvas_x,canvas_y = x*self.blocksize + self.blocksize/2, y*self.blocksize + self.blocksize/2
