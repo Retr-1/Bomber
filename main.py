@@ -490,14 +490,14 @@ class Bot(Player):
             dx,dy = path[0][0] - x, path[0][1] - y
             code = 0
 
-            if dx == -1:
+            if dx <= -1:
                 code |= constants.MOVING_LEFT
-            elif dx == 1:
+            elif dx >= 1:
                 code |= constants.MOVING_RIGHT
 
-            if dy == -1:
+            if dy <= -1:
                 code |= constants.MOVING_UP
-            elif dy == 1:
+            elif dy >= 1:
                 code |= constants.MOVING_DOWN
             
             self.move(code)
@@ -514,12 +514,13 @@ class Bot(Player):
             mark_bomb(bomb, forbidden)
 
         if (x,y) in forbidden:
-            path_to_safety = closest_path_to_safety(x, y, forbidden)[1:]
-            if len(path_to_safety) == 0:
+            self.target = None
+            self.target_path = closest_path_to_safety(x, y, forbidden)[1:]
+            if len(self.target_path) == 0:
                 self.move(0)
                 return
             
-            follow_path(path_to_safety)
+            follow_path(self.target_path)
 
         elif time.time()-self.time_of_last_bomb > self.bomb_cooldown and enemy_in_range(x, y) and can_safely_detonate(x, y):
             print(f'{self.color} is dropping !')
