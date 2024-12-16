@@ -518,11 +518,15 @@ class LevelEditor(Subprogram):
 
     def save(self):
         file = asksaveasfile(defaultextension=[('Bomber Map', '*.map')], filetypes=[('Bomber Map', '*.map')])
+        if not file:
+            return
         file.write('\n'.join([ ' '.join([ str(self.board[y][x]) for x in range(self.n_blocks) ]) for y in range(self.n_blocks) ]))
         file.close()
 
     def load(self):
         file = askopenfile(defaultextension=[('Bomber Map', '*.map')], filetypes=[('Bomber Map', '*.map')])
+        if not file:
+            return
         for y,line in enumerate(file):
             self.board[y] = list(map(int, line.split()))
         self.redraw()
@@ -907,12 +911,18 @@ class LevelSelector(Subprogram):
 
     def refresh(self):
         self.lvl_combox.configure(values=os.listdir('maps/'))
+        self.selection_changed()
 
-    def selection_changed(self, event):
+    def selection_changed(self, event=None):
         self.max_players = self.get_max_players(self.map_name.get())
         if self.human_count.get()+self.bot_count.get() > self.max_players:
             self.human_count.hard_set(1)
             self.bot_count.hard_set(1)
+        
+        if self.max_players < 2:
+            self.play_btn.configure(state=tk.DISABLED)
+        else:
+            self.play_btn.configure(state=tk.NORMAL)
         # print(self.max_players, event)
 
     def get_max_players(self, map_name):
