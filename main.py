@@ -1086,7 +1086,7 @@ class LevelSelector(Subprogram):
         self.lvl_combox.current(0)
         self.lvl_combox.bind('<<ComboboxSelected>>', self.selection_changed)
         self.human_count = RangePicker(self.frame, 'Number of Players: ', 0, 4, 1, can_add)
-        self.bot_count = RangePicker(self.frame, 'Number of Bots: ', 0, 4, 1, can_add)
+        self.bot_count = RangePicker(self.frame, 'Number of Bots: ', 0, 8, 1, can_add)
         self.play_btn = tk.Button(master=self.frame, text='Start the game', command=play)
         self.menu_btn = tk.Button(master=self.frame, text='Back to menu', command=func_from_level_select_to_menu)
 
